@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+
+# Java / Maven build output
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Maven wrapper and generated metadata
+.mvn/timing.properties
+
+# IDEs and editor settings
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+.springBeans
+.sts4-cache/
+.vscode/
+
+# Other Java build tools
+build/
+out/
+.gradle/
+
+# Runtime logs and generated reports
+*.log
+surefire-reports/
+failsafe-reports/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+infrastructure/keys/
+*.pem
+*.key
