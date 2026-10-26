@@ -1,0 +1,177 @@
+
+services:
+
+  # 1. MySQL Database
+  mysql:
+    image: mysql:8.4
+    container_name: yongdrel-mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: yongdrel_template
+      MYSQL_USER: yongdrel
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # 2. Redis
+  redis:
+    image: redis:7-alpine
+    container_name: yongdrel-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    command: ["redis-server", "--appendonly", "yes"]
+
+    volumes:
+      - redis_data:/data
+
+  # 3. RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: yongdrel-rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  # 4. Authentication Microservice
+  
+  auth-service:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+
+    image: yongdrel-auth:local
+    restart: unless-stopped
+
+    ports:
+      - "8085:8085"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      JWT_PRIVATE_KEY_PATH: /app/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      CONFIG_SERVER_URL: http://config-server:8888
+
+    volumes:
+      - ./keys/private.pem:/app/keys/private.pem:ro
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+
+
+  # 5. API Gateway
+  api-gateway:
+    build:
+      context: ../api-gateway
+      dockerfile: Dockerfile
+
+    image: yongdrel-gateway:local
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      CONFIG_SERVER_URL: http://config-server:8888
+
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    depends_on:
+      auth-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+
+
+  config-server:
+    build:
+      context: ../config-server
+      dockerfile: Dockerfile
+    image: yongdrel-config:local
+    restart: unless-stopped
+
+    ports:
+      - "8888:8888"
+
+    environment:
+      CONFIG_REPO_LOCATION: file:/app/config-repo
+
+    volumes:
+      - ../config-server/config-repo:/app/config-repo:ro
+
+  
+  # 7. Service Template
+  service-template:
+    build:
+      context: ../services/service-template
+      dockerfile: Dockerfile
+
+    image: yongdrel-template:local
+    restart: unless-stopped
+
+    ports:
+      - "8081:8081"
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_template
+      SPRING_DATASOURCE_USERNAME: yongdrel
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+# Persistent Data Volumes
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
