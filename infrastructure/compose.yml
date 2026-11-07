@@ -118,6 +118,8 @@ services:
         condition: service_started
       config-server:
         condition: service_started
+      winner-service:
+        condition: service_started
 
 
   config-server:
@@ -169,6 +171,27 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+
+  # Winner Microservice
+  winner-service:
+    build:
+      context: ../services/winner-service
+      dockerfile: Dockerfile
+    image: yongdrel-winner:local
+    restart: unless-stopped
+    ports:
+      - "8094:8094"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
 
 # Persistent Data Volumes
 volumes:
