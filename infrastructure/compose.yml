@@ -57,7 +57,6 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
 
   # 4. Authentication Microservice
-  
   auth-service:
     build:
       context: ../services/auth-service
@@ -90,7 +89,6 @@ services:
       config-server:
         condition: service_started
 
-
   # 5. API Gateway
   api-gateway:
     build:
@@ -118,14 +116,17 @@ services:
         condition: service_started
       config-server:
         condition: service_started
-      winner-service:
+      # winner-service:
+      #   condition: service_started
+      ticket-issuance-service:
         condition: service_started
 
-
+  # 6. Config Server
   config-server:
     build:
       context: ../config-server
       dockerfile: Dockerfile
+
     image: yongdrel-config:local
     restart: unless-stopped
 
@@ -138,7 +139,6 @@ services:
     volumes:
       - ../config-server/config-repo:/app/config-repo:ro
 
-  
   # 7. Service Template
   service-template:
     build:
@@ -172,26 +172,73 @@ services:
       rabbitmq:
         condition: service_started
 
-  # Winner Microservice
+  # 8. Winner Microservice
   winner-service:
     build:
       context: ../services/winner-service
       dockerfile: Dockerfile
+
     image: yongdrel-winner:local
     restart: unless-stopped
+
     ports:
       - "8094:8094"
+
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: yongdrel
       DB_PASSWORD: ${MYSQL_PASSWORD}
+
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
     volumes:
       - ./keys/public.pem:/app/keys/public.pem:ro
+
     depends_on:
       mysql:
         condition: service_healthy
+
+  # 9. Ticket Issuance Microservice
+  ticket-issuance-service:
+    build:
+      context: ../services/ticket-issuance-service
+      dockerfile: Dockerfile
+
+    image: yongdrel-ticket-issuance:local
+    restart: unless-stopped
+
+    ports:
+      - "8087:8087"
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_tickets
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      APP_OUTBOX_DISPATCHER_ENABLED: "false"
+      APP_PAYMENT_LISTENER_ENABLED: "false"
+
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
 
 # Persistent Data Volumes
 volumes:
