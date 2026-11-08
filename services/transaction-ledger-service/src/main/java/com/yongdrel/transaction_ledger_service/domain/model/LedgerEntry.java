@@ -13,7 +13,9 @@ import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
@@ -83,11 +85,13 @@ public class LedgerEntry {
         this.referenceId = referenceId;
         this.sourceType = sourceType;
         this.direction = direction;
-        this.amount = amount;
+        // Match the database precision (DECIMAL(19,4), DATETIME(6)) so the first
+        // response and later reads of the same entry look identical.
+        this.amount = amount.setScale(4, RoundingMode.UNNECESSARY);
         this.currency = currency;
         this.description = description;
-        this.occurredAt = occurredAt;
-        this.recordedAt = Instant.now();
+        this.occurredAt = occurredAt.truncatedTo(ChronoUnit.MICROS);
+        this.recordedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
     public UUID getId() { return id; }
