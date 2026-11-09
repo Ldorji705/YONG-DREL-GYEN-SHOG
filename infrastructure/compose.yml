@@ -240,6 +240,48 @@ services:
       rabbitmq:
         condition: service_started
 
+  # 10. Transaction Ledger Microservice (SCRUM-253)
+  transaction-ledger-service:
+    build:
+      context: ../services/transaction-ledger-service
+      dockerfile: Dockerfile
+
+    image: yongdrel-transaction-ledger:local
+    restart: unless-stopped
+
+    ports:
+      - "8098:8098"
+
+    environment:
+      # Database must exist first: see services/transaction-ledger-service/README.md
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_ledger
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      # Shared secret for internal callers of POST /api/ledger/entries
+      LEDGER_INTERNAL_API_KEY: ${LEDGER_INTERNAL_API_KEY}
+
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
 # Persistent Data Volumes
 volumes:
   mysql_data:
