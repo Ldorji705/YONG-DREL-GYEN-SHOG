@@ -24,7 +24,7 @@ target/
 
 # Other Java build tools
 build/
-out/
+/out/
 .gradle/
 
 # Runtime logs and generated reports
