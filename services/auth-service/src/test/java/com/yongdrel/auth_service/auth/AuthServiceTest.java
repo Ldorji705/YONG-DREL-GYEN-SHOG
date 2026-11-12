@@ -7,6 +7,7 @@ import com.yongdrel.authservice.user.AuthUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import java.util.UUID;
 
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -43,7 +44,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         testUser = new AuthUser();
-        testUser.setId(1L);
+        testUser.setId(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
         testUser.setEmail("sonam@example.com");
         testUser.setPasswordHash("hashed-password");
         testUser.setRole("USER");
