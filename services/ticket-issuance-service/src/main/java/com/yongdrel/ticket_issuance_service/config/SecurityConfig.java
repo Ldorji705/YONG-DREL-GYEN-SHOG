@@ -37,7 +37,12 @@ public class SecurityConfig {
                 "/api/tickets/*"
         ).authenticated()
 
-        .anyRequest().denyAll()
+                .requestMatchers(
+                HttpMethod.GET,
+                "/internal/tickets/eligible"
+        ).permitAll()
+
+.anyRequest().denyAll()
 )
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(jwt -> {})
