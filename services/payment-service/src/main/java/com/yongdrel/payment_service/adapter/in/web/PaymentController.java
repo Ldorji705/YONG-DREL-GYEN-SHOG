@@ -1,8 +1,12 @@
 package com.yongdrel.payment_service.adapter.in.web;
 
 import com.yongdrel.payment_service.application.service.PaymentApplicationService;
+import com.yongdrel.payment_service.application.service.ManualPaymentVerificationService;
+import com.yongdrel.payment_service.application.service.OrganizerRolePolicy;
 import com.yongdrel.payment_service.dto.PaymentRequest;
+import com.yongdrel.payment_service.dto.PaymentRejectionRequest;
 import com.yongdrel.payment_service.dto.PaymentResponse;
+import com.yongdrel.payment_service.dto.PaymentProofRequest;
 
 import jakarta.validation.Valid;
 
@@ -19,11 +23,17 @@ import java.util.UUID;
 public class PaymentController {
 
     private final PaymentApplicationService paymentService;
+    private final ManualPaymentVerificationService verificationService;
+    private final OrganizerRolePolicy organizerRolePolicy;
 
     public PaymentController(
-            PaymentApplicationService paymentService
+            PaymentApplicationService paymentService,
+            ManualPaymentVerificationService verificationService,
+            OrganizerRolePolicy organizerRolePolicy
     ) {
         this.paymentService = paymentService;
+        this.verificationService = verificationService;
+        this.organizerRolePolicy = organizerRolePolicy;
     }
 
     @PostMapping
@@ -59,7 +69,43 @@ public class PaymentController {
         );
     }
 
-    private Long authenticatedUserId(Jwt jwt) {
+    @PostMapping("/{paymentId}/proof")
+    public PaymentResponse submitPaymentProof(
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody PaymentProofRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return paymentService.submitPaymentProof(
+                paymentId,
+                authenticatedUserId(jwt),
+                request.paymentProofId()
+        );
+    }
+
+    @PostMapping("/{paymentId}/approve")
+    public PaymentResponse approvePayment(
+            @PathVariable UUID paymentId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID organizerId = authenticatedOrganizerId(jwt);
+        return verificationService.approve(paymentId, organizerId);
+    }
+
+    @PostMapping("/{paymentId}/reject")
+    public PaymentResponse rejectPayment(
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody PaymentRejectionRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID organizerId = authenticatedOrganizerId(jwt);
+        return verificationService.reject(
+                paymentId,
+                organizerId,
+                request.reason()
+        );
+    }
+
+    private UUID authenticatedUserId(Jwt jwt) {
 
         if (jwt == null) {
             throw new ResponseStatusException(
@@ -69,21 +115,26 @@ public class PaymentController {
         }
 
         try {
-            Long userId = Long.valueOf(jwt.getSubject());
-
-            if (userId <= 0) {
-                throw new NumberFormatException(
-                        "Invalid user ID"
-                );
-            }
-
-            return userId;
-
-        } catch (NumberFormatException ex) {
+            return UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "Invalid user identity"
             );
         }
+    }
+
+    private UUID authenticatedOrganizerId(Jwt jwt) {
+            UUID userId = authenticatedUserId(jwt);
+            String role = jwt.getClaimAsString("role");
+
+            if (!organizerRolePolicy.isOrganizer(role)) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Organizer role required"
+                );
+            }
+
+            return userId;
     }
 }

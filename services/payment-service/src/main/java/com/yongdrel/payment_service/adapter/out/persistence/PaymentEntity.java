@@ -2,6 +2,8 @@ package com.yongdrel.payment_service.adapter.out.persistence;
 
 import com.yongdrel.payment_service.domain.model.PaymentStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,7 +32,8 @@ public class PaymentEntity {
     private UUID lotteryEventId;
 
     @Column(name = "user_id", nullable = false, updatable = false)
-    private Long userId;
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID userId;
 
     @Column(nullable = false)
     private Integer quantity;
@@ -49,10 +52,12 @@ public class PaymentEntity {
     private String providerReference;
 
     @Column(name = "payment_proof_id")
+    @JdbcTypeCode(SqlTypes.BINARY)
     private UUID paymentProofId;
 
     @Column(name = "verified_by")
-    private Long verifiedBy;
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID verifiedBy;
 
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
@@ -75,7 +80,7 @@ public class PaymentEntity {
     public PaymentEntity(
             UUID orderId,
             UUID lotteryEventId,
-            Long userId,
+            UUID userId,
             Integer quantity,
             BigDecimal amount,
             String currency
@@ -104,7 +109,7 @@ public class PaymentEntity {
         return lotteryEventId;
     }
 
-    public Long getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 
@@ -171,7 +176,7 @@ public class PaymentEntity {
     return paymentProofId;
 }
 
-public Long getVerifiedBy() {
+public UUID getVerifiedBy() {
     return verifiedBy;
 }
 
@@ -201,7 +206,7 @@ public void markPendingVerification(UUID proofId) {
     this.updatedAt = LocalDateTime.now();
 }
 
-public void markApproved(Long organizerId) {
+public void markApproved(UUID organizerId) {
     if (status != PaymentStatus.PENDING_VERIFICATION) {
         throw new IllegalStateException(
                 "Payment is not awaiting verification"
@@ -221,7 +226,7 @@ public void markApproved(Long organizerId) {
     this.updatedAt = this.verifiedAt;
 }
 
-    public void markRejected(Long organizerId, String reason) {
+    public void markRejected(UUID organizerId, String reason) {
         if (status != PaymentStatus.PENDING_VERIFICATION) {
             throw new IllegalStateException(
                     "Payment is not awaiting verification"

@@ -3,6 +3,7 @@ package com.yongdrel.authservice.auth;
 
 import com.yongdrel.authservice.user.AuthUser;
 import com.yongdrel.authservice.user.AuthUserRepository;
+import com.yongdrel.authservice.user.UserRole;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -61,7 +62,7 @@ public class AuthService {
         user.setPasswordHash(
                 passwordEncoder.encode(request.password())
         );
-        user.setRole("USER");
+        user.setRole(UserRole.USER);
 
         repository.save(user);
     }
@@ -93,7 +94,7 @@ public class AuthService {
                 .audience(List.of(audience))
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(seconds))
-                .claim("role", user.getRole())
+                .claim("role", user.getRole().name())
                 .build();
 
         JwsHeader header = JwsHeader
@@ -105,6 +106,29 @@ public class AuthService {
                 .getTokenValue();
 
         return new TokenResponse(token, "Bearer", seconds);
+    }
+
+    public void provisionOrganizer(String email) {
+        String normalizedEmail = normalizeEmail(email);
+        AuthUser user = repository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found"
+                ));
+
+        user.setRole(UserRole.ORGANIZER);
+        repository.save(user);
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Email is required"
+            );
+        }
+
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private ResponseStatusException invalidCredentials() {

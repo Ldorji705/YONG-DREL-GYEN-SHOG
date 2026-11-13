@@ -27,11 +27,12 @@ class PaymentRepositoryIntegrationTest {
     void shouldSaveAndRetrievePayment() {
 
         UUID orderId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
         PaymentEntity payment = new PaymentEntity(
                 orderId,
                 UUID.randomUUID(),
-                101L,
+                userId,
                 2,
                 new BigDecimal("200.00"),
                 "BTN"
@@ -45,6 +46,7 @@ class PaymentRepositoryIntegrationTest {
 
         assertEquals(saved.getId(), found.getId());
         assertEquals(PaymentStatus.PENDING, found.getStatus());
+        assertEquals(userId, found.getUserId());
         assertEquals(new BigDecimal("200.00"), found.getAmount());
         assertEquals("BTN", found.getCurrency());
     }
@@ -57,7 +59,7 @@ class PaymentRepositoryIntegrationTest {
         PaymentEntity first = new PaymentEntity(
                 orderId,
                 UUID.randomUUID(),
-                101L,
+                UUID.randomUUID(),
                 1,
                 new BigDecimal("100.00"),
                 "BTN"
@@ -66,7 +68,7 @@ class PaymentRepositoryIntegrationTest {
         PaymentEntity second = new PaymentEntity(
                 orderId,
                 UUID.randomUUID(),
-                101L,
+                UUID.randomUUID(),
                 1,
                 new BigDecimal("100.00"),
                 "BTN"
@@ -88,7 +90,7 @@ class PaymentRepositoryIntegrationTest {
         PaymentEntity payment = new PaymentEntity(
                 orderId,
                 UUID.randomUUID(),
-                101L,
+                UUID.randomUUID(),
                 1,
                 new BigDecimal("100.00"),
                 "BTN"

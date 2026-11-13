@@ -36,7 +36,10 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/api/payments"
+                                        "/api/payments",
+                                        "/api/payments/*/proof",
+                                        "/api/payments/*/approve",
+                                        "/api/payments/*/reject"
                         ).authenticated()
 
                         .requestMatchers(

@@ -31,7 +31,7 @@ class AuthUserRepositoryTest {
         AuthUser user = new AuthUser();
         user.setEmail("test@example.com");
         user.setPasswordHash("hashed-password");
-        user.setRole("USER");
+        user.setRole(UserRole.USER);
 
         repository.saveAndFlush(user);
 
@@ -53,7 +53,7 @@ class AuthUserRepositoryTest {
         AuthUser user = new AuthUser();
         user.setEmail("existing@example.com");
         user.setPasswordHash("hashed-password");
-        user.setRole("USER");
+        user.setRole(UserRole.USER);
 
         repository.saveAndFlush(user);
 

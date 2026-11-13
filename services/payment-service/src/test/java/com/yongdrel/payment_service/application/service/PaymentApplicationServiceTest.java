@@ -39,14 +39,14 @@ class PaymentApplicationServiceTest {
 
     private UUID orderId;
     private UUID eventId;
-    private Long userId;
+    private UUID userId;
     private TrustedOrder validOrder;
 
     @BeforeEach
     void setUp() {
         orderId = UUID.randomUUID();
         eventId = UUID.randomUUID();
-        userId = 101L;
+        userId = UUID.randomUUID();
 
         validOrder = new TrustedOrder(
                 orderId,
@@ -110,7 +110,7 @@ class PaymentApplicationServiceTest {
     void shouldRejectPaymentForAnotherUser() {
 
         TrustedOrder anotherUsersOrder = new TrustedOrder(
-                orderId, eventId, 999L, 2,
+                orderId, eventId, UUID.randomUUID(), 2,
                 new BigDecimal("200.00"), "BTN",
                 "PENDING_PAYMENT"
         );
@@ -240,7 +240,7 @@ class PaymentApplicationServiceTest {
         UUID paymentId = UUID.randomUUID();
 
         PaymentEntity payment = new PaymentEntity(
-                orderId, eventId, 999L, 2,
+                orderId, eventId, UUID.randomUUID(), 2,
                 new BigDecimal("200.00"), "BTN"
         );
 
