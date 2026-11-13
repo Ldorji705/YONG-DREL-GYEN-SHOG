@@ -48,6 +48,18 @@ public class PaymentEntity {
     @Column(name = "provider_reference", unique = true)
     private String providerReference;
 
+    @Column(name = "payment_proof_id")
+    private UUID paymentProofId;
+
+    @Column(name = "verified_by")
+    private Long verifiedBy;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -154,4 +166,84 @@ public class PaymentEntity {
         this.status = PaymentStatus.REFUNDED;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public UUID getPaymentProofId() {
+    return paymentProofId;
+}
+
+public Long getVerifiedBy() {
+    return verifiedBy;
+}
+
+public LocalDateTime getVerifiedAt() {
+    return verifiedAt;
+}
+
+public String getRejectionReason() {
+    return rejectionReason;
+}
+
+public void markPendingVerification(UUID proofId) {
+    if (status != PaymentStatus.PENDING) {
+        throw new IllegalStateException(
+                "Payment is not awaiting proof submission"
+        );
+    }
+
+    if (proofId == null) {
+        throw new IllegalArgumentException(
+                "Payment proof ID is required"
+        );
+    }
+
+    this.paymentProofId = proofId;
+    this.status = PaymentStatus.PENDING_VERIFICATION;
+    this.updatedAt = LocalDateTime.now();
+}
+
+public void markApproved(Long organizerId) {
+    if (status != PaymentStatus.PENDING_VERIFICATION) {
+        throw new IllegalStateException(
+                "Payment is not awaiting verification"
+        );
+    }
+
+    if (organizerId == null) {
+        throw new IllegalArgumentException(
+                "Organizer ID is required"
+        );
+    }
+
+    this.verifiedBy = organizerId;
+    this.verifiedAt = LocalDateTime.now();
+    this.status = PaymentStatus.CONFIRMED;
+    this.confirmedAt = this.verifiedAt;
+    this.updatedAt = this.verifiedAt;
+}
+
+    public void markRejected(Long organizerId, String reason) {
+        if (status != PaymentStatus.PENDING_VERIFICATION) {
+            throw new IllegalStateException(
+                    "Payment is not awaiting verification"
+            );
+        }
+
+        if (organizerId == null) {
+            throw new IllegalArgumentException(
+                    "Organizer ID is required"
+            );
+        }
+
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Rejection reason is required"
+            );
+        }
+
+        this.verifiedBy = organizerId;
+        this.verifiedAt = LocalDateTime.now();
+        this.rejectionReason = reason;
+        this.status = PaymentStatus.REJECTED;
+        this.updatedAt = this.verifiedAt;
+}
 }
