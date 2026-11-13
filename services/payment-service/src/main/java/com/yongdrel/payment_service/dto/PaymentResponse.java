@@ -11,11 +11,12 @@ public record PaymentResponse(
         UUID id,
         UUID orderId,
         UUID lotteryEventId,
-        Long userId,
+        UUID userId,
         Integer quantity,
         BigDecimal amount,
         String currency,
         PaymentStatus status,
+        UUID paymentProofId,
         LocalDateTime createdAt,
         LocalDateTime confirmedAt
 ) {
@@ -30,6 +31,7 @@ public record PaymentResponse(
                 payment.getAmount(),
                 payment.getCurrency(),
                 payment.getStatus(),
+                payment.getPaymentProofId(),
                 payment.getCreatedAt(),
                 payment.getConfirmedAt()
         );

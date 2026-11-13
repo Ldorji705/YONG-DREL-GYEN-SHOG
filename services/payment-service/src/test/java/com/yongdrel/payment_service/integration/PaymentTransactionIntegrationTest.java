@@ -34,13 +34,13 @@ class PaymentTransactionIntegrationTest {
     private PaymentVerificationPort verificationPort;
 
     @Test
-    void shouldRollbackPaymentWhenOutboxInsertFails() {
+    void shouldFailClosedBeforePaymentMutation() {
 
         PaymentEntity payment = paymentRepository.saveAndFlush(
                 new PaymentEntity(
                         UUID.randomUUID(),
                         UUID.randomUUID(),
-                        101L,
+                        UUID.randomUUID(),
                         2,
                         new BigDecimal("200.00"),
                         "BTN"
@@ -49,41 +49,20 @@ class PaymentTransactionIntegrationTest {
 
         UUID paymentId = payment.getId();
 
-        // Pre-create an outbox record for this payment.
-        // A second insert must violate the unique paymentId constraint.
-        outboxRepository.saveAndFlush(
-                new PaymentOutboxEntity(
-                        paymentId,
-                        "payment.confirmed",
-                        "{}"
-                )
-        );
-
-        when(verificationPort.verifyPayment(paymentId))
-                .thenReturn(new VerifiedPayment(
-                        paymentId,
-                        "TEST-" + UUID.randomUUID(),
-                        new BigDecimal("200.00"),
-                        "BTN",
-                        true
-                ));
-
-        assertThrows(
-                RuntimeException.class,
+        var exception = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
                 () -> confirmationService.confirmVerifiedPayment(paymentId)
         );
 
-        // Reload from MySQL after the failed transaction.
+        assertEquals(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                exception.getStatusCode()
+        );
+
         PaymentEntity reloaded =
                 paymentRepository.findById(paymentId).orElseThrow();
 
         assertEquals(PaymentStatus.PENDING, reloaded.getStatus());
-
-        // The original outbox row must remain the only one.
-        long count = outboxRepository.findAll().stream()
-                .filter(event -> paymentId.equals(event.getPaymentId()))
-                .count();
-
-        assertEquals(1, count);
+        assertEquals(0, outboxRepository.count());
     }
 }

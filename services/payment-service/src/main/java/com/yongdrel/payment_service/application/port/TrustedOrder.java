@@ -6,7 +6,7 @@ import java.util.UUID;
 public record TrustedOrder(
         UUID orderId,
         UUID lotteryEventId,
-        Long userId,
+        UUID userId,
         Integer quantity,
         BigDecimal amount,
         String currency,

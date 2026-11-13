@@ -2,6 +2,8 @@ package com.yongdrel.payment_service.adapter.out.persistence;
 
 import com.yongdrel.payment_service.domain.model.PaymentStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,7 +32,8 @@ public class PaymentEntity {
     private UUID lotteryEventId;
 
     @Column(name = "user_id", nullable = false, updatable = false)
-    private Long userId;
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID userId;
 
     @Column(nullable = false)
     private Integer quantity;
@@ -48,6 +51,20 @@ public class PaymentEntity {
     @Column(name = "provider_reference", unique = true)
     private String providerReference;
 
+    @Column(name = "payment_proof_id")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID paymentProofId;
+
+    @Column(name = "verified_by")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID verifiedBy;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -63,7 +80,7 @@ public class PaymentEntity {
     public PaymentEntity(
             UUID orderId,
             UUID lotteryEventId,
-            Long userId,
+            UUID userId,
             Integer quantity,
             BigDecimal amount,
             String currency
@@ -92,7 +109,7 @@ public class PaymentEntity {
         return lotteryEventId;
     }
 
-    public Long getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 
@@ -154,4 +171,84 @@ public class PaymentEntity {
         this.status = PaymentStatus.REFUNDED;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public UUID getPaymentProofId() {
+    return paymentProofId;
+}
+
+public UUID getVerifiedBy() {
+    return verifiedBy;
+}
+
+public LocalDateTime getVerifiedAt() {
+    return verifiedAt;
+}
+
+public String getRejectionReason() {
+    return rejectionReason;
+}
+
+public void markPendingVerification(UUID proofId) {
+    if (status != PaymentStatus.PENDING) {
+        throw new IllegalStateException(
+                "Payment is not awaiting proof submission"
+        );
+    }
+
+    if (proofId == null) {
+        throw new IllegalArgumentException(
+                "Payment proof ID is required"
+        );
+    }
+
+    this.paymentProofId = proofId;
+    this.status = PaymentStatus.PENDING_VERIFICATION;
+    this.updatedAt = LocalDateTime.now();
+}
+
+public void markApproved(UUID organizerId) {
+    if (status != PaymentStatus.PENDING_VERIFICATION) {
+        throw new IllegalStateException(
+                "Payment is not awaiting verification"
+        );
+    }
+
+    if (organizerId == null) {
+        throw new IllegalArgumentException(
+                "Organizer ID is required"
+        );
+    }
+
+    this.verifiedBy = organizerId;
+    this.verifiedAt = LocalDateTime.now();
+    this.status = PaymentStatus.CONFIRMED;
+    this.confirmedAt = this.verifiedAt;
+    this.updatedAt = this.verifiedAt;
+}
+
+    public void markRejected(UUID organizerId, String reason) {
+        if (status != PaymentStatus.PENDING_VERIFICATION) {
+            throw new IllegalStateException(
+                    "Payment is not awaiting verification"
+            );
+        }
+
+        if (organizerId == null) {
+            throw new IllegalArgumentException(
+                    "Organizer ID is required"
+            );
+        }
+
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Rejection reason is required"
+            );
+        }
+
+        this.verifiedBy = organizerId;
+        this.verifiedAt = LocalDateTime.now();
+        this.rejectionReason = reason;
+        this.status = PaymentStatus.REJECTED;
+        this.updatedAt = this.verifiedAt;
+}
 }

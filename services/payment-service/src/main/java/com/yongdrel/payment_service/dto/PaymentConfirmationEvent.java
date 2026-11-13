@@ -8,7 +8,7 @@ public record PaymentConfirmationEvent(
         UUID paymentId,
         UUID orderId,
         UUID lotteryEventId,
-        Long userId,
+        UUID userId,
         int quantity,
         LocalDateTime confirmedAt
 ) {}

@@ -15,6 +15,10 @@ public interface PaymentRepository
 
     Optional<PaymentEntity> findByOrderId(UUID orderId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM PaymentEntity p WHERE p.id = :id")
+    Optional<PaymentEntity> findByIdForProofUpdate(@Param("id") UUID id);
+
     Optional<PaymentEntity> findByProviderReference(
             String providerReference
     );
