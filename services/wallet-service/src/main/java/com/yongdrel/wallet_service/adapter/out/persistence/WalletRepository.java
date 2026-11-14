@@ -15,6 +15,8 @@ public interface WalletRepository extends Repository<Wallet, java.util.UUID> {
 
     Wallet save(Wallet wallet);
 
+    Optional<Wallet> findById(java.util.UUID id);
+
     Optional<Wallet> findByOwnerId(String ownerId);
 
     /** SELECT ... FOR UPDATE: concurrent operations on one wallet run one after another. */
