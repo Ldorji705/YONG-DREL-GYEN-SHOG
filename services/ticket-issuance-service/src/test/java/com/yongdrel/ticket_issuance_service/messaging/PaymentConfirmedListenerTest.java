@@ -21,7 +21,7 @@ class PaymentConfirmedListenerTest {
 
     private UUID orderId;
     private UUID eventId;
-    private Long userId;
+    private UUID userId;
     private UUID paymentId;
 
     @BeforeEach
@@ -31,7 +31,7 @@ class PaymentConfirmedListenerTest {
 
         orderId = UUID.randomUUID();
         eventId = UUID.randomUUID();
-        userId = 1L;
+        userId = UUID.randomUUID();
         paymentId = UUID.randomUUID();
     }
 

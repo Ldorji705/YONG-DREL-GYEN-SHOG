@@ -373,43 +373,59 @@ services:
       rabbitmq:
         condition: service_started
 
-  # 11. Refund Microservice (SCRUM-254)
+  # Notification Microservice (SCRUM-251)
+  notification-service:
+    build:
+      context: ../services/notification-service
+      dockerfile: Dockerfile
+    image: yongdrel-notification:local
+    restart: unless-stopped
+    ports:
+      - "8099:8099"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_notifications
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      NOTIFICATION_TEST_ENDPOINT_ENABLED: "false"
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+
+  # Refund Microservice (SCRUM-254)
   refund-service:
     build:
       context: ../services/refund-service
       dockerfile: Dockerfile
-
     image: yongdrel-refund:local
     restart: unless-stopped
-
     ports:
-      - "8099:8099"
-
+      - "8100:8099"
     environment:
-      # Database must exist first: see services/refund-service/README.md
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_refunds
       DB_USERNAME: yongdrel
       DB_PASSWORD: ${MYSQL_PASSWORD}
-
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
-
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
-
-      # Payment Service is not in this compose file yet; this is its expected name/port
       PAYMENT_SERVICE_URL: http://payment-service:8086
       LEDGER_SERVICE_URL: http://transaction-ledger-service:8098
       LEDGER_INTERNAL_API_KEY: ${LEDGER_INTERNAL_API_KEY}
       REFUND_PROVIDER_MODE: SUCCESS
-
     volumes:
       - ./keys/public.pem:/app/keys/public.pem:ro
-
     depends_on:
       mysql:
         condition: service_healthy

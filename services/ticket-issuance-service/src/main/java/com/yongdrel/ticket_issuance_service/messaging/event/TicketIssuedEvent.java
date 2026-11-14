@@ -8,7 +8,7 @@ import java.util.UUID;
 public record TicketIssuedEvent(
         UUID eventId,
         UUID orderId,
-        Long userId,
+        UUID userId,
         UUID lotteryEventId,
         List<UUID> ticketIds,
         Instant issuedAt

@@ -1,4 +1,3 @@
-
 package com.yongdrel.ticket_issuance_service.application.service;
 
 import com.yongdrel.ticket_issuance_service.adapter.out.event.EventServiceAdapter;
@@ -52,7 +51,6 @@ public class TicketIssuanceService {
                 repository.findByOrderId(request.orderId());
 
         if (!existing.isEmpty()) {
-
             if (existing.size() != request.quantity()
                     || existing.stream().anyMatch(ticket ->
                             !ticket.getEventId().equals(request.eventId())
@@ -90,22 +88,18 @@ public class TicketIssuanceService {
 
         // Step 3: Generate tickets
         List<TicketEntity> tickets = new ArrayList<>();
-
         Instant issuedAt = Instant.now();
 
         for (int i = 1; i <= request.quantity(); i++) {
-
             TicketEntity ticket = new TicketEntity();
 
             ticket.setId(UUID.randomUUID());
-
             ticket.setTicketNumber(
                     "YG-" + UUID.randomUUID()
                             .toString()
                             .replace("-", "")
                             .toUpperCase()
             );
-
             ticket.setOrderId(request.orderId());
             ticket.setEventId(request.eventId());
             ticket.setUserId(request.userId());
@@ -162,12 +156,12 @@ public class TicketIssuanceService {
                 eventId,
                 TicketStatus.ISSUED
         ).stream()
-         .map(TicketEntity::getId)
-         .toList();
+                .map(TicketEntity::getId)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> getUserTickets(Long userId) {
+    public List<TicketResponse> getUserTickets(UUID userId) {
 
         return repository.findByUserId(userId)
                 .stream()
