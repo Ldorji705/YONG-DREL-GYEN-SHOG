@@ -24,7 +24,10 @@ target/
 
 # Other Java build tools
 build/
-/out/
+out/
+!services/audit-log-service/src/main/java/**/out/
+!services/fraud-risk-service/src/main/java/**/out/
+!services/reporting-service/src/main/java/**/out/
 .gradle/
 
 # Runtime logs and generated reports

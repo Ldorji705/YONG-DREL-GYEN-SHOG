@@ -1,0 +1,83 @@
+Audit Log Service API smoke test  gateway=http://localhost:18080  run=1794649913  tenant=50913  student=54913  2026-11-14T09:51:53Z
+
+== Health
+PASS  health endpoint -> 200 {"status":"UP","groups":["liveness","readiness"]}
+
+== 401 invalid JWT
+PASS  no token                                                   GET /api/audit/events -> 401
+PASS  garbage token                                              GET /api/audit/events -> 401
+PASS  tampered signature                                         GET /api/audit/events -> 401
+PASS  expired token                                              GET /api/audit/events -> 401
+PASS  wrong issuer                                               GET /api/audit/events -> 401
+PASS  wrong audience                                             GET /api/audit/events -> 401
+PASS  non-numeric subject                                        GET /api/audit/events -> 401
+
+== Record audit events (append-only)
+PASS  service records a USER action                              POST /api/audit/events -> 201
+PASS  integrity seal valid                                       contains "integrityValid":true
+PASS  correlation id echoed in header                            contains smoke-1794649913
+PASS  admin records a SYSTEM action                              POST /api/audit/events -> 201
+PASS  correlation id taken from header                           POST /api/audit/events -> 201
+PASS  body carries header correlation id                         contains "correlationId":"hdr-1794649913"
+
+== 409 duplicate / 422 bad cross-service reference
+PASS  same eventId again                                         POST /api/audit/events -> 409
+PASS  unknown sourceService                                      POST /api/audit/events -> 422
+
+== 400 bad input
+PASS  validation errors                                          POST /api/audit/events -> 400
+PASS  fieldErrors returned                                       contains "fieldErrors"
+PASS  occurredAt in the future                                   POST /api/audit/events -> 400
+PASS  eventId not a UUID                                         POST /api/audit/events -> 400
+PASS  unknown enum value                                         POST /api/audit/events -> 400
+PASS  malformed JSON                                             POST /api/audit/events -> 400
+PASS  page size 0                                                GET /api/audit/events?size=0 -> 400
+PASS  reversed time range                                        GET /api/audit/events?from=2026-12-01T00:00:00Z&to=2026-11-01T00:00:00Z -> 400
+PASS  bad date format                                            GET /api/audit/events?from=yesterday -> 400
+PASS  bad correlation id                                         GET /api/audit/correlations/bad%20id -> 400
+PASS  non-numeric id                                             GET /api/audit/events/abc -> 400
+
+== Restricted search
+PASS  admin searches the correlation                             GET /api/audit/events?correlationId=smoke-1794649913 -> 200
+PASS  admin sees both events                                     contains "totalElements":2
+PASS  organizer sees own tenant                                  GET /api/audit/events?correlationId=smoke-1794649913 -> 200
+PASS  organizer sees both events                                 contains "totalElements":2
+PASS  other organizer is scoped away                             GET /api/audit/events?correlationId=smoke-1794649913 -> 200
+PASS  other organizer sees nothing                               contains "totalElements":0
+PASS  student sees own actions only                              GET /api/audit/events?correlationId=smoke-1794649913 -> 200
+PASS  student sees 1 event                                       contains "totalElements":1
+PASS  filters: action + outcome + target                         GET /api/audit/events?action=PAYMENT_PROOF_UPLOADED&outcome=SUCCESS&targetType=ORDER&targetId=1794649913&tenantId=50913 -> 200
+PASS  filtered result                                            contains "totalElements":1
+PASS  correlation timeline                                       GET /api/audit/correlations/smoke-1794649913 -> 200
+PASS  timeline holds ORDER_CONFIRMED                             contains "ORDER_CONFIRMED"
+PASS  get one event                                              GET /api/audit/events/1 -> 200
+
+== 403 unauthorized
+PASS  student cannot write                                       POST /api/audit/events -> 403
+PASS  organizer cannot write                                     POST /api/audit/events -> 403
+PASS  service cannot read                                        GET /api/audit/events -> 403
+PASS  organizer asks for other tenant                            GET /api/audit/events?tenantId=50914 -> 403
+PASS  student asks for another actor                             GET /api/audit/events?actorId=54914 -> 403
+PASS  organizer token without tenantId                           GET /api/audit/events -> 403
+
+== 404 absent record
+PASS  unknown event id                                           GET /api/audit/events/999999999 -> 404
+PASS  other tenant's event (hidden)                              GET /api/audit/events/1 -> 404
+PASS  other student's event (hidden)                             GET /api/audit/events/1 -> 404
+PASS  SYSTEM event hidden from student                           GET /api/audit/events/2 -> 404
+PASS  unknown correlation                                        GET /api/audit/correlations/none-1794649913 -> 404
+
+== 405 append-only
+PASS  PUT is not allowed                                         PUT /api/audit/events/1 -> 405
+PASS  DELETE is not allowed                                      DELETE /api/audit/events/1 -> 405
+
+== Cross-service flow: fraud-risk-service -> RabbitMQ -> audit-log-service
+PASS  fraud: first use of reference                              POST /api/fraud/checks -> 201
+PASS  fraud: reused reference -> flag                            POST /api/fraud/checks -> 201
+PASS  fraud: organizer confirms fraud                            PATCH /api/fraud/flags/1/review -> 200
+PASS  audit recorded FRAUD_FLAG_RAISED                           contains "action":"FRAUD_FLAG_RAISED"
+PASS  audit recorded FRAUD_FLAG_REVIEWED                         contains "action":"FRAUD_FLAG_REVIEWED"
+PASS  reviewer is the actor                                      contains "actorId":3
+PASS  other tenant cannot see fraud trail                        GET /api/audit/correlations/fraud-flag-1 -> 404
+
+RESULT: 60 passed, 0 failed   (evidence: docs/evidence/api-smoke-test-20261114-155153.txt)

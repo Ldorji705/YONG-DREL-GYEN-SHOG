@@ -1,0 +1,91 @@
+### Audit Log Service – API examples (VS Code REST Client / IntelliJ HTTP client)
+
+@gateway = http://localhost:8080
+@serviceToken = paste-SERVICE-token
+@adminToken = paste-ADMIN-token
+@organizerToken = paste-ORGANIZER-token-with-tenantId-10
+@studentToken = paste-student-token-sub-100
+
+### Health (no token)
+GET http://localhost:8091/actuator/health
+
+### 1. Service records a student's action -> 201
+POST {{gateway}}/api/audit/events
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":"3f2b8c1e-7a4d-4e1b-9c55-0a1b2c3d4e5f","tenantId":10,"actorType":"USER","actorId":100,"actorRole":"STUDENT",
+ "action":"PAYMENT_PROOF_UPLOADED","outcome":"SUCCESS","targetType":"ORDER","targetId":"5001",
+ "sourceService":"payment-proof-service","correlationId":"order-5001-checkout",
+ "occurredAt":"2026-11-10T09:59:55Z","details":{"amount":100}}
+
+### 2. Same eventId again -> 409
+POST {{gateway}}/api/audit/events
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":"3f2b8c1e-7a4d-4e1b-9c55-0a1b2c3d4e5f","tenantId":10,"actorType":"USER","actorId":100,
+ "action":"PAYMENT_PROOF_UPLOADED","outcome":"SUCCESS","targetType":"ORDER","targetId":"5001",
+ "sourceService":"payment-proof-service","occurredAt":"2026-11-10T09:59:55Z"}
+
+### 3. System action, correlation id from header -> 201
+POST {{gateway}}/api/audit/events
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+X-Correlation-Id: order-5001-checkout
+
+{"eventId":"7d0c3a52-1f7e-4c55-a1d2-6b0f6c9e1a10","tenantId":10,"actorType":"SYSTEM",
+ "action":"ORDER_CANCELLED_UNPAID","outcome":"SUCCESS","targetType":"ORDER","targetId":"5002",
+ "sourceService":"scheduler-service","occurredAt":"2026-11-10T10:15:00Z","details":{"reason":"payment timeout"}}
+
+### 4. Unknown source service -> 422
+POST {{gateway}}/api/audit/events
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":"0b9e2f0a-0d1e-4a5b-8c7d-112233445566","actorType":"SYSTEM","action":"ORDER_CREATED","outcome":"SUCCESS",
+ "targetType":"ORDER","targetId":"1","sourceService":"billing-service","occurredAt":"2026-11-10T10:00:00Z"}
+
+### 5. Validation errors -> 400
+POST {{gateway}}/api/audit/events
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":"0b9e2f0a-0d1e-4a5b-8c7d-112233445567","actorType":"USER","action":"paid","outcome":"SUCCESS",
+ "targetType":"ORDER","targetId":"a/b","sourceService":"Bad Name","occurredAt":"2026-11-10T10:00:00Z"}
+
+### 6. Organizer: everything in my tenant last week (tenant is forced)
+GET {{gateway}}/api/audit/events?from=2026-11-03T00:00:00Z&to=2026-11-10T00:00:00Z&size=50
+Authorization: Bearer {{organizerToken}}
+
+### 7. Organizer: failed or denied payment verifications
+GET {{gateway}}/api/audit/events?action=PAYMENT_VERIFIED&outcome=DENIED
+Authorization: Bearer {{organizerToken}}
+
+### 8. Student: my own activity
+GET {{gateway}}/api/audit/events
+Authorization: Bearer {{studentToken}}
+
+### 9. Admin: everything that happened to order 5001
+GET {{gateway}}/api/audit/events?targetType=ORDER&targetId=5001
+Authorization: Bearer {{adminToken}}
+
+### 10. Timeline of one transaction (oldest first)
+GET {{gateway}}/api/audit/correlations/order-5001-checkout
+Authorization: Bearer {{organizerToken}}
+
+### 11. Fraud flag trail recorded from RabbitMQ
+GET {{gateway}}/api/audit/correlations/fraud-flag-1
+Authorization: Bearer {{organizerToken}}
+
+### 12. One event
+GET {{gateway}}/api/audit/events/1
+Authorization: Bearer {{adminToken}}
+
+### 13. Append-only: DELETE -> 405
+DELETE {{gateway}}/api/audit/events/1
+Authorization: Bearer {{adminToken}}
+
+### 14. Service accounts cannot read -> 403
+GET {{gateway}}/api/audit/events
+Authorization: Bearer {{serviceToken}}

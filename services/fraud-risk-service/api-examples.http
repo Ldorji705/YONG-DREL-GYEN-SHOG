@@ -1,0 +1,122 @@
+### Fraud & Risk Service – API examples (VS Code REST Client / IntelliJ HTTP client)
+### Tokens: log in through the Auth Service. Organizer tokens need a tenantId claim.
+
+@gateway = http://localhost:8080
+@serviceToken = paste-SERVICE-token
+@organizerToken = paste-ORGANIZER-token-with-tenantId-10
+@studentToken = paste-student-token
+@adminToken = paste-ADMIN-token
+
+### Health (no token)
+GET http://localhost:8090/actuator/health
+
+### 1. First use of a UPI reference -> 201, CLEAR
+POST {{gateway}}/api/fraud/checks
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"tenantId":10,"eventId":5,"orderId":5001,"buyerId":201,"paymentReference":"UPI-777-888","amount":100.00,"expectedAmount":100.00}
+
+### 2. Same request again -> 200 (idempotent replay, same check id)
+POST {{gateway}}/api/fraud/checks
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"tenantId":10,"eventId":5,"orderId":5001,"buyerId":201,"paymentReference":"UPI-777-888","amount":100.00,"expectedAmount":100.00}
+
+### 3. Same reference on a different order, wrong amount -> 201, REVIEW_REQUIRED, flag raised
+POST {{gateway}}/api/fraud/checks
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"tenantId":10,"eventId":5,"orderId":5002,"buyerId":202,"paymentReference":"upi777888","amount":80.00,"expectedAmount":100.00}
+
+### 4. Student submitting for their own order -> 201, outcome only
+POST {{gateway}}/api/fraud/checks
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{"tenantId":10,"eventId":5,"orderId":5003,"buyerId":201,"proofImageHash":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","amount":100.00}
+
+### 5. Validation error -> 400 with fieldErrors
+POST {{gateway}}/api/fraud/checks
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"tenantId":0,"eventId":5,"orderId":1,"buyerId":1,"amount":-1}
+
+### 6. Get a check
+GET {{gateway}}/api/fraud/checks/2
+Authorization: Bearer {{organizerToken}}
+
+### 7. Organizer review queue (open, high risk first page)
+GET {{gateway}}/api/fraud/flags?status=OPEN&riskLevel=HIGH&page=0&size=20
+Authorization: Bearer {{organizerToken}}
+
+### 8. Payment Verification asks: does this order have flags?
+GET {{gateway}}/api/fraud/flags?orderId=5002
+Authorization: Bearer {{serviceToken}}
+
+### 9. Start reviewing
+PATCH {{gateway}}/api/fraud/flags/1/review
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"status":"UNDER_REVIEW"}
+
+### 10. Confirm fraud (note required)
+PATCH {{gateway}}/api/fraud/flags/1/review
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"status":"CONFIRMED_FRAUD","note":"Reference reused from order 5001"}
+
+### 11. Review a closed flag -> 409
+PATCH {{gateway}}/api/fraud/flags/1/review
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"status":"DISMISSED","note":"changed mind"}
+
+### 12. Platform default rules
+GET {{gateway}}/api/fraud/rules
+Authorization: Bearer {{organizerToken}}
+
+### 13. Rules actually applied to my tenant
+GET {{gateway}}/api/fraud/rules/effective
+Authorization: Bearer {{organizerToken}}
+
+### 14. Create a tenant override -> 201
+POST {{gateway}}/api/fraud/rules
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"tenantId":10,"ruleType":"BUYER_VELOCITY","enabled":true,"threshold":2,"windowMinutes":30,"weight":30,"description":"Max 2 proofs per 30 min"}
+
+### 15. Same override again -> 409
+POST {{gateway}}/api/fraud/rules
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"tenantId":10,"ruleType":"BUYER_VELOCITY","enabled":true,"threshold":2,"windowMinutes":30,"weight":30}
+
+### 16. Update the override
+PUT {{gateway}}/api/fraud/rules/6
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"enabled":true,"threshold":3,"windowMinutes":30,"weight":30}
+
+### 17. Organizer trying to change a platform default -> 403
+PUT {{gateway}}/api/fraud/rules/1
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"enabled":false,"threshold":1,"windowMinutes":0,"weight":70}
+
+### 18. Delete the override -> 204 (tenant falls back to the default)
+DELETE {{gateway}}/api/fraud/rules/6
+Authorization: Bearer {{organizerToken}}
+
+### 19. No token -> 401
+GET {{gateway}}/api/fraud/flags
