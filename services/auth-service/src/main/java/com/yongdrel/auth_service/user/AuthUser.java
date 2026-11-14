@@ -1,15 +1,25 @@
 
 package com.yongdrel.authservice.user;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "auth_users")
 public class AuthUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @UuidGenerator
+    @Column(name = "id", nullable = false, updatable = false, columnDefinition = "BINARY(16)")
+    private UUID id;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -17,14 +27,15 @@ public class AuthUser {
     @Column(nullable = false)
     private String passwordHash;
 
-    @Column(nullable = false)
-    private String role = "USER";
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.USER;
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -44,11 +55,11 @@ public class AuthUser {
         this.passwordHash = passwordHash;
     }
 
-    public String getRole() {
+    public UserRole getRole() {
         return role;
     }
 
-    public void setRole(String role) {
-        this.role = role;
+    public void setRole(UserRole role) {
+        this.role = Objects.requireNonNull(role, "role is required");
     }
 }

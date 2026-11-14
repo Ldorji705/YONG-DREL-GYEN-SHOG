@@ -195,6 +195,8 @@ services:
       DB_USERNAME: yongdrel
       DB_PASSWORD: ${MYSQL_PASSWORD}
 
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
 
@@ -312,6 +314,250 @@ services:
       rabbitmq:
         condition: service_started
       config-server:
+        condition: service_started
+
+  # 11. Winner Microservice
+  winner-service:
+    build:
+      context: ../services/winner-service
+      dockerfile: Dockerfile
+    image: yongdrel-winner:local
+    restart: unless-stopped
+    ports:
+      - "8094:8094"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      APP_SERVICES_EVENT_URL: "http://event-service:8084"
+      APP_SERVICES_PRIZE_URL: "http://prize-catalog-service:8086"
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # 12. Event Microservice
+  event-service:
+    build:
+      context: ../services/event-service
+      dockerfile: Dockerfile
+    image: yongdrel-event:local
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_events
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+  # 13. Ticket Issuance Microservice
+  ticket-issuance-service:
+    build:
+      context: ../services/ticket-issuance-service
+      dockerfile: Dockerfile
+    image: yongdrel-ticket-issuance:local
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_tickets
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      CONFIG_SERVER_URL: http://config-server:8888
+      ORDER_SERVICE_CHECK_ENABLED: "false"
+      ORDER_SERVICE_URL: http://order-service:8082
+      APP_OUTBOX_DISPATCHER_ENABLED: "false"
+      APP_PAYMENT_LISTENER_ENABLED: "false"
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+  # 14. Prize Catalog Microservice
+  prize-catalog-service:
+    build:
+      context: ../services/prize-catalog-service
+      dockerfile: Dockerfile
+    image: yongdrel-prize-catalog:local
+    restart: unless-stopped
+    ports:
+      - "8088:8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_prizes
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+  # 15. Prize Claim Microservice
+  prize-claim-service:
+    build:
+      context: ../services/prize-claim-service
+      dockerfile: Dockerfile
+    image: yongdrel-prize-claim:local
+    restart: unless-stopped
+    ports:
+      - "8095:8095"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      WINNER_SERVICE_URL: http://winner-service:8094
+      PRIZE_SERVICE_URL: http://prize-catalog-service:8086
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      winner-service:
+        condition: service_started
+      prize-catalog-service:
+        condition: service_started
+
+  # 16. Transaction Ledger Microservice
+  transaction-ledger-service:
+    build:
+      context: ../services/transaction-ledger-service
+      dockerfile: Dockerfile
+    image: yongdrel-transaction-ledger:local
+    restart: unless-stopped
+    ports:
+      - "8098:8098"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_ledger
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      CONFIG_SERVER_URL: http://config-server:8888
+      TENANT_SERVICE_CHECK_ENABLED: "false"
+      TENANT_SERVICE_URL: http://tenant-service:8083
+      LEDGER_INTERNAL_API_KEY: ${LEDGER_INTERNAL_API_KEY}
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+  # 17. Notification Microservice
+  notification-service:
+    build:
+      context: ../services/notification-service
+      dockerfile: Dockerfile
+    image: yongdrel-notification:local
+    restart: unless-stopped
+    ports:
+      - "8099:8099"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_notifications
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      NOTIFICATION_TEST_ENDPOINT_ENABLED: "false"
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
+
+  # 18. Refund Microservice
+  refund-service:
+    build:
+      context: ../services/refund-service
+      dockerfile: Dockerfile
+    image: yongdrel-refund:local
+    restart: unless-stopped
+    ports:
+      - "8100:8099"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_refunds
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      PAYMENT_SERVICE_URL: http://payment-service:8086
+      LEDGER_SERVICE_URL: http://transaction-ledger-service:8098
+      LEDGER_INTERNAL_API_KEY: ${LEDGER_INTERNAL_API_KEY}
+      REFUND_PROVIDER_MODE: SUCCESS
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      transaction-ledger-service:
         condition: service_started
 
 # Persistent Data Volumes
