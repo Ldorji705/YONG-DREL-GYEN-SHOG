@@ -46,6 +46,16 @@ public class Wallet {
     protected Wallet() {
     }
 
+    /** New empty wallet. (In the service, wallets are created atomically by WalletRepository.insertIfAbsent.) */
+    public Wallet(String ownerId, String currency) {
+        this.id = UUID.randomUUID();
+        this.ownerId = ownerId;
+        this.currency = currency;
+        this.balance = BigDecimal.ZERO.setScale(4);
+        this.createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        this.updatedAt = this.createdAt;
+    }
+
     public void credit(BigDecimal amount) {
         balance = balance.add(amount);
         updatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
