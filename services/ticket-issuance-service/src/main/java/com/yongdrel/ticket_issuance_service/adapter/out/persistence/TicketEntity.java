@@ -36,7 +36,7 @@ public class TicketEntity {
     private UUID orderId;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private UUID userId;
 
     @Column(name = "ticket_index", nullable = false)
     private Integer ticketIndex;
@@ -83,11 +83,11 @@ public class TicketEntity {
         this.orderId = orderId;
     }
 
-    public Long getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(UUID userId) {
         this.userId = userId;
     }
 

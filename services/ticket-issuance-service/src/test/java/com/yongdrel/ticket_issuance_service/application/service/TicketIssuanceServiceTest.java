@@ -37,7 +37,7 @@ class TicketIssuanceServiceTest {
 
     private UUID orderId;
     private UUID eventId;
-    private Long userId;
+    private UUID userId;
 
     @BeforeEach
     void setUp() {
@@ -49,7 +49,7 @@ class TicketIssuanceServiceTest {
 
         orderId = UUID.randomUUID();
         eventId = UUID.randomUUID();
-        userId = 1L;
+        userId = UUID.randomUUID();
     }
 
     @Test
@@ -141,7 +141,7 @@ class TicketIssuanceServiceTest {
                 new IssueTicketRequest(
                         orderId,
                         eventId,
-                        2L,
+                        UUID.randomUUID(),
                         1
                 );
 

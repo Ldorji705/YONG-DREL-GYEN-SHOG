@@ -8,7 +8,7 @@ import java.util.UUID;
 public interface SpringDataTicketRepository
         extends JpaRepository<TicketEntity, UUID> {
 
-    List<TicketEntity> findByUserId(Long userId);
+    List<TicketEntity> findByUserId(UUID userId);
 
     List<TicketEntity> findByOrderId(UUID orderId);
 

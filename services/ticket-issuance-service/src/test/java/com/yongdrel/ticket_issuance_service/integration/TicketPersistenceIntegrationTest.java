@@ -35,7 +35,7 @@ class TicketPersistenceIntegrationTest {
 
         UUID orderId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
-        Long userId = 1L;
+        UUID userId = UUID.randomUUID();
 
         IssueTicketRequest request =
                 new IssueTicketRequest(orderId, eventId, userId, 3);

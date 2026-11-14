@@ -10,7 +10,7 @@ public class Ticket {
     private String ticketNumber;
     private UUID eventId;
     private UUID orderId;
-    private Long userId;
+    private UUID userId;
     private TicketStatus status;
     private Instant issuedAt;
 
@@ -22,7 +22,7 @@ public class Ticket {
             String ticketNumber,
             UUID eventId,
             UUID orderId,
-            Long userId,
+            UUID userId,
             TicketStatus status,
             Instant issuedAt
     ) {
@@ -51,7 +51,7 @@ public class Ticket {
         return orderId;
     }
 
-    public Long getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 

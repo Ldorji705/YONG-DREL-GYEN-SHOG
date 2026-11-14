@@ -111,7 +111,7 @@ public class TicketIssuanceService {
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> getUserTickets(Long userId) {
+    public List<TicketResponse> getUserTickets(UUID userId) {
 
         return repository.findByUserId(userId)
                 .stream()

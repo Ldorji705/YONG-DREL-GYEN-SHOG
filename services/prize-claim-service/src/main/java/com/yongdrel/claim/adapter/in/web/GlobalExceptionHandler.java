@@ -6,6 +6,7 @@ import com.yongdrel.claim.application.exception.ClaimNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -91,6 +92,16 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 HttpStatus.CONFLICT,
                 "A conflicting claim already exists"
+        );
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleOptimisticLock(
+            OptimisticLockingFailureException exception
+    ) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "This claim was modified by another request. Please refresh and try again."
         );
     }
 

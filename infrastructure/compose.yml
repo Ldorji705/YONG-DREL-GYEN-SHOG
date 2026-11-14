@@ -373,6 +373,33 @@ services:
       rabbitmq:
         condition: service_started
 
+  # 12. Notification Microservice (SCRUM-251)
+  notification-service:
+    build:
+      context: ../services/notification-service
+      dockerfile: Dockerfile
+    image: yongdrel-notification:local
+    restart: unless-stopped
+    ports:
+      - "8099:8099"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_notifications
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      NOTIFICATION_TEST_ENDPOINT_ENABLED: "false"
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+
 # Persistent Data Volumes
 volumes:
   mysql_data:
