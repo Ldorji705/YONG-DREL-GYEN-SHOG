@@ -126,17 +126,17 @@ public class RefundService {
                 request.amount(), payment.currency(), request.reason(), idempotencyKey));
     }
 
-    /** Creates the payment's balance row once; a concurrent duplicate insert is simply ignored. */
+    /** Creates the payment's balance row once (atomic INSERT IGNORE, safe under concurrency). */
     private void ensureBalanceRow(PaymentSnapshot payment) {
-        try {
-            tx.executeWithoutResult(status -> {
-                if (balances.findForUpdate(payment.id()).isEmpty()) {
-                    balances.save(new PaymentRefundBalance(payment.id(), payment.amount(), payment.currency()));
-                }
-            });
-        } catch (DataIntegrityViolationException alreadyCreated) {
-            // Another request created it at the same moment; fine.
-        }
+        tx.executeWithoutResult(status ->
+                balances.insertIfAbsent(toBytes(payment.id()), payment.amount(), payment.currency()));
+    }
+
+    private static byte[] toBytes(UUID id) {
+        return java.nio.ByteBuffer.allocate(16)
+                .putLong(id.getMostSignificantBits())
+                .putLong(id.getLeastSignificantBits())
+                .array();
     }
 
     private Refund process(Refund refund) {
