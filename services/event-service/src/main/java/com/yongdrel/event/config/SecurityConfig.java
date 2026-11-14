@@ -25,6 +25,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers(
+                    org.springframework.http.HttpMethod.GET,
+                    "/internal/events/*"
+                ).permitAll()
                 .requestMatchers("/api/events/**").authenticated()
                 .anyRequest().denyAll()
             )
