@@ -420,6 +420,52 @@ services:
       transaction-ledger-service:
         condition: service_started
 
+  # 12. Wallet Microservice (SCRUM-252)
+  wallet-service:
+    build:
+      context: ../services/wallet-service
+      dockerfile: Dockerfile
+
+    image: yongdrel-wallet:local
+    restart: unless-stopped
+
+    ports:
+      - "8097:8097"
+
+    environment:
+      # Database must exist first: see services/wallet-service/README.md
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/yongdrel_wallets
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      # Shared secret for internal callers of POST /api/wallets/credit
+      WALLET_INTERNAL_API_KEY: ${WALLET_INTERNAL_API_KEY}
+      LEDGER_SERVICE_URL: http://transaction-ledger-service:8098
+      LEDGER_INTERNAL_API_KEY: ${LEDGER_INTERNAL_API_KEY}
+
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      transaction-ledger-service:
+        condition: service_started
+
 # Persistent Data Volumes
 volumes:
   mysql_data:
