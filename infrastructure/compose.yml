@@ -18,6 +18,7 @@ services:
 
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
 
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
@@ -116,6 +117,12 @@ services:
     depends_on:
       auth-service:
         condition: service_started
+      fraud-risk-service:
+        condition: service_started
+      audit-log-service:
+        condition: service_started
+      reporting-service:
+        condition: service_started
       config-server:
         condition: service_started
 
@@ -168,6 +175,143 @@ services:
       redis:
         condition: service_started
       rabbitmq:
+        condition: service_started
+
+  # 8. Fraud & Risk Service (owner: Nidup Dorji)
+  fraud-risk-service:
+    build:
+      context: ../services/fraud-risk-service
+      dockerfile: Dockerfile
+
+    image: yongdrel-fraud-risk:local
+    restart: unless-stopped
+
+    ports:
+      - "8090:8090"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      CONFIG_SERVER_URL: http://config-server:8888
+
+      # Turn on once order-service is part of this compose file
+      ORDER_SERVICE_CHECK_ENABLED: "false"
+      ORDER_SERVICE_URL: http://order-service:8082
+
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8090/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
+
+  # 9. Audit Log Service (owner: Nidup Dorji)
+  audit-log-service:
+    build:
+      context: ../services/audit-log-service
+      dockerfile: Dockerfile
+
+    image: yongdrel-audit-log:local
+    restart: unless-stopped
+
+    ports:
+      - "8091:8091"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      CONFIG_SERVER_URL: http://config-server:8888
+
+      # Turn on once tenant-service is part of this compose file
+      TENANT_SERVICE_CHECK_ENABLED: "false"
+      TENANT_SERVICE_URL: http://tenant-service:8083
+
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8091/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
+
+  # 10. Reporting Service (owner: Nidup Dorji)
+  reporting-service:
+    build:
+      context: ../services/reporting-service
+      dockerfile: Dockerfile
+
+    image: yongdrel-reporting:local
+    restart: unless-stopped
+
+    ports:
+      - "8092:8092"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      DB_USERNAME: yongdrel
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+
+      CONFIG_SERVER_URL: http://config-server:8888
+
+    volumes:
+      - ./keys/public.pem:/app/keys/public.pem:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8092/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      config-server:
         condition: service_started
 
 # Persistent Data Volumes
