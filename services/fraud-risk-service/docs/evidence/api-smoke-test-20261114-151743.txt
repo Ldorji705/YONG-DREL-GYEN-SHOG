@@ -1,0 +1,77 @@
+Fraud & Risk Service API smoke test  gateway=http://localhost:18080  run=1794647863  2026-11-14T09:17:43Z
+
+== Health
+PASS  health endpoint -> 200 {"status":"UP","groups":["liveness","readiness"]}
+
+== 401 invalid JWT
+PASS  no token                                                       GET /api/fraud/flags -> 401
+PASS  garbage token                                                  GET /api/fraud/flags -> 401
+PASS  tampered signature                                             GET /api/fraud/flags -> 401
+PASS  expired token                                                  GET /api/fraud/flags -> 401
+PASS  wrong issuer                                                   GET /api/fraud/flags -> 401
+PASS  wrong audience                                                 GET /api/fraud/flags -> 401
+PASS  non-numeric subject                                            GET /api/fraud/flags -> 401
+
+== Duplicate payment checks
+PASS  student submits own proof (clean)                              POST /api/fraud/checks -> 201
+PASS  student sees only the decision                                 body contains "decision":"CLEAR"
+PASS  identical replay is idempotent                                 POST /api/fraud/checks -> 200
+PASS  same reference, other order/buyer                              POST /api/fraud/checks -> 201
+PASS  duplicate reference raises a flag                              body contains "DUPLICATE_PAYMENT_REFERENCE"
+PASS  decision REVIEW_REQUIRED                                       body contains "decision":"REVIEW_REQUIRED"
+PASS  same screenshot, other order                                   POST /api/fraud/checks -> 201
+PASS  duplicate screenshot detected                                  body contains "DUPLICATE_PROOF_IMAGE"
+
+== Suspicious activity rules
+PASS  amount mismatch (60 vs 100)                                    POST /api/fraud/checks -> 201
+PASS  amount mismatch flagged                                        body contains "AMOUNT_MISMATCH"
+
+== Manual review flow
+PASS  organizer review queue                                         GET /api/fraud/flags?status=OPEN&size=100 -> 200
+PASS  queue contains the new flag                                    body contains "id":1,
+PASS  service can read flags of an order                             GET /api/fraud/flags?orderId=17946478632 -> 200
+PASS  start review                                                   PATCH /api/fraud/flags/1/review -> 200
+PASS  close without note                                             PATCH /api/fraud/flags/1/review -> 400
+PASS  confirm fraud                                                  PATCH /api/fraud/flags/1/review -> 200
+PASS  status CONFIRMED_FRAUD, reviewer 3                             body contains "reviewerId":3
+PASS  review closed flag again                                       PATCH /api/fraud/flags/1/review -> 409
+PASS  buyer with confirmed fraud pays again                          POST /api/fraud/checks -> 201
+PASS  prior confirmed fraud flagged                                  body contains "PRIOR_CONFIRMED_FRAUD"
+
+== 400 bad input
+PASS  validation errors                                              POST /api/fraud/checks -> 400
+PASS  fieldErrors returned                                           body contains "fieldErrors"
+PASS  malformed JSON                                                 POST /api/fraud/checks -> 400
+PASS  unknown enum in query                                          GET /api/fraud/flags?status=MAYBE -> 400
+PASS  page size too large                                            GET /api/fraud/flags?size=500 -> 400
+PASS  non-numeric id                                                 GET /api/fraud/checks/abc -> 400
+PASS  invalid rule settings                                          POST /api/fraud/rules -> 400
+
+== 403 unauthorized
+PASS  student for another buyer                                      POST /api/fraud/checks -> 403
+PASS  student reads flags                                            GET /api/fraud/flags -> 403
+PASS  organizer submits for other tenant                             POST /api/fraud/checks -> 403
+PASS  organizer filters other tenant                                 GET /api/fraud/flags?tenantId=20 -> 403
+PASS  organizer token without tenantId                               GET /api/fraud/flags -> 403
+PASS  service reviews a flag                                         PATCH /api/fraud/flags/1/review -> 403
+PASS  organizer edits platform default                               PUT /api/fraud/rules/1 -> 403
+
+== 404 absent record
+PASS  unknown check                                                  GET /api/fraud/checks/999999999 -> 404
+PASS  unknown flag                                                   GET /api/fraud/flags/999999999 -> 404
+PASS  flag of another tenant (hidden)                                GET /api/fraud/flags/1 -> 404
+PASS  check of another tenant (hidden)                               GET /api/fraud/checks/2 -> 404
+PASS  unknown rule                                                   DELETE /api/fraud/rules/999999999 -> 404
+
+== Rule CRUD and 409 conflict
+PASS  create tenant override                                         POST /api/fraud/rules -> 201
+PASS  duplicate override                                             POST /api/fraud/rules -> 409
+PASS  read rule                                                      GET /api/fraud/rules/6 -> 200
+PASS  effective rules use override                                   GET /api/fraud/rules/effective -> 200
+PASS  override is effective                                          body contains "scope":"TENANT"
+PASS  update rule                                                    PUT /api/fraud/rules/6 -> 200
+PASS  other organizer reads it                                       GET /api/fraud/rules/6 -> 403
+PASS  delete rule                                                    DELETE /api/fraud/rules/6 -> 204
+PASS  deleted rule is gone                                           GET /api/fraud/rules/6 -> 404
+
+RESULT: 56 passed, 0 failed   (evidence: docs/evidence/api-smoke-test-20261114-151743.txt)

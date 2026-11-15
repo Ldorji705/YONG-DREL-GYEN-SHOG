@@ -1,0 +1,129 @@
+### Reporting Service – API examples (VS Code REST Client / IntelliJ HTTP client)
+
+@gateway = http://localhost:8080
+@serviceToken = paste-SERVICE-token
+@adminToken = paste-ADMIN-token
+@organizerToken = paste-ORGANIZER-token-with-tenantId-10
+@studentToken = paste-student-token-sub-100
+
+### Health (no token)
+GET http://localhost:8092/actuator/health
+
+### --- Feed (owning services) ---
+
+### 1. Event -> 201 CREATED (repeat -> 200 UNCHANGED)
+PUT {{gateway}}/api/reports/ingest/events/5
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"tenantId":10,"name":"Losar Raffle","ticketPrice":50,"totalTickets":100,"status":"OPEN",
+ "salesCloseAt":"2026-11-20T18:00:00Z","sourceUpdatedAt":"2026-11-01T08:00:00Z"}
+
+### 2. Order confirmed
+PUT {{gateway}}/api/reports/ingest/orders/5001
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":5,"tenantId":10,"buyerId":100,"quantity":2,"amount":100,"status":"CONFIRMED",
+ "createdAt":"2026-11-02T09:00:00Z","confirmedAt":"2026-11-02T10:00:00Z","sourceUpdatedAt":"2026-11-02T10:00:00Z"}
+
+### 3. Same order, older version -> 409
+PUT {{gateway}}/api/reports/ingest/orders/5001
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":5,"tenantId":10,"buyerId":100,"quantity":2,"amount":100,"status":"AWAITING_VERIFICATION",
+ "createdAt":"2026-11-02T09:00:00Z","sourceUpdatedAt":"2026-11-02T09:05:00Z"}
+
+### 4. Order for an event of another tenant -> 422
+PUT {{gateway}}/api/reports/ingest/orders/5002
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":5,"tenantId":20,"buyerId":100,"quantity":1,"amount":50,"status":"AWAITING_PAYMENT",
+ "createdAt":"2026-11-02T09:00:00Z","sourceUpdatedAt":"2026-11-02T09:00:00Z"}
+
+### 5. Prize tier
+PUT {{gateway}}/api/reports/ingest/prizes/70
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":5,"tenantId":10,"tier":1,"name":"Gold coin","quantity":1,"unitValue":60,"sourceUpdatedAt":"2026-11-01T08:00:00Z"}
+
+### 6. Payout paid
+PUT {{gateway}}/api/reports/ingest/payouts/90
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{"eventId":5,"tenantId":10,"prizeId":70,"winnerId":100,"amount":60,"status":"PAID",
+ "paidAt":"2026-11-25T08:00:00Z","sourceUpdatedAt":"2026-11-25T08:00:00Z"}
+
+### --- Reports (organizer: own tenant only) ---
+
+### 7. Tenant overview
+GET {{gateway}}/api/reports/overview
+Authorization: Bearer {{organizerToken}}
+
+### 8. Events with sales
+GET {{gateway}}/api/reports/events?status=OPEN&page=0&size=20
+Authorization: Bearer {{organizerToken}}
+
+### 9. One event, everything
+GET {{gateway}}/api/reports/events/5/summary
+Authorization: Bearer {{organizerToken}}
+
+### 10. Sales in November with daily breakdown
+GET {{gateway}}/api/reports/sales?eventId=5&from=2026-11-01T00:00:00Z&to=2026-12-01T00:00:00Z
+Authorization: Bearer {{organizerToken}}
+
+### 11. Tickets / prizes / payouts
+GET {{gateway}}/api/reports/tickets?eventId=5
+Authorization: Bearer {{organizerToken}}
+
+###
+GET {{gateway}}/api/reports/prizes?eventId=5
+Authorization: Bearer {{organizerToken}}
+
+###
+GET {{gateway}}/api/reports/payouts?eventId=5
+Authorization: Bearer {{organizerToken}}
+
+### 12. Another tenant -> 403
+GET {{gateway}}/api/reports/overview?tenantId=20
+Authorization: Bearer {{organizerToken}}
+
+### 13. Admin: any tenant, or platform-wide without tenantId
+GET {{gateway}}/api/reports/overview?tenantId=10
+Authorization: Bearer {{adminToken}}
+
+### 14. Student: own purchases
+GET {{gateway}}/api/reports/me/purchases
+Authorization: Bearer {{studentToken}}
+
+### --- Saved reports (organizer) ---
+
+### 15. Create -> 201
+POST {{gateway}}/api/reports/saved
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"name":"Losar weekly sales","reportType":"SALES","eventId":5,"from":"2026-11-01T00:00:00Z","to":"2026-11-08T00:00:00Z"}
+
+### 16. List / get / run
+GET {{gateway}}/api/reports/saved
+Authorization: Bearer {{organizerToken}}
+
+###
+GET {{gateway}}/api/reports/saved/1/run
+Authorization: Bearer {{organizerToken}}
+
+### 17. Update (creator only)
+PUT {{gateway}}/api/reports/saved/1
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{"name":"Losar tickets","reportType":"TICKETS","eventId":5}
+
+### 18. Delete -> 204
+DELETE {{gateway}}/api/reports/saved/1
+Authorization: Bearer {{organizerToken}}

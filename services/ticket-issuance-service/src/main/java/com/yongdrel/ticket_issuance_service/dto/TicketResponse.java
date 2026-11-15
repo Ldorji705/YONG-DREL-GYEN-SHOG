@@ -10,7 +10,7 @@ public record TicketResponse(
         String ticketNumber,
         UUID eventId,
         UUID orderId,
-        Long userId,
+        UUID userId,
         String status,
         Instant issuedAt
 ) {

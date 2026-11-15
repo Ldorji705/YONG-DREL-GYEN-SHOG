@@ -49,7 +49,7 @@ class TicketIssuanceServiceTest {
 
     private UUID orderId;
     private UUID eventId;
-    private Long userId;
+    private UUID userId;
 
     @BeforeEach
     void setUp() {
@@ -65,7 +65,7 @@ class TicketIssuanceServiceTest {
 
         orderId = UUID.randomUUID();
         eventId = UUID.randomUUID();
-        userId = 1L;
+        userId = UUID.randomUUID();
     }
 
     // TEST 1: Issue three unique tickets
@@ -165,7 +165,12 @@ class TicketIssuanceServiceTest {
                 .thenReturn(List.of(existing));
 
         IssueTicketRequest request =
-                new IssueTicketRequest(orderId, eventId, 2L, 1);
+new IssueTicketRequest(
+                        orderId,
+                        eventId,
+                        UUID.randomUUID(),
+                        1
+                );
 
         assertThrows(
                 IllegalStateException.class,

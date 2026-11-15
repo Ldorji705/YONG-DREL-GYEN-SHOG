@@ -1,3 +1,4 @@
+
 package com.yongdrel.ticket_issuance_service.adapter.in.web;
 
 import com.yongdrel.ticket_issuance_service.application.service.TicketIssuanceService;
@@ -26,7 +27,7 @@ public class TicketController {
     public List<TicketResponse> myTickets(
             @AuthenticationPrincipal Jwt jwt
     ) {
-        Long userId = authenticatedUserId(jwt);
+        UUID userId = authenticatedUserId(jwt);
         return service.getUserTickets(userId);
     }
 
@@ -35,37 +36,40 @@ public class TicketController {
             @PathVariable UUID ticketId,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        Long userId = authenticatedUserId(jwt);
+        UUID userId = authenticatedUserId(jwt);
 
         TicketResponse ticket = service.getTicket(ticketId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Ticket not found"
+                        HttpStatus.NOT_FOUND,
+                        "Ticket not found"
                 ));
 
         if (!ticket.userId().equals(userId)) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Ticket not found"
+                    HttpStatus.NOT_FOUND,
+                    "Ticket not found"
             );
         }
 
         return ticket;
     }
 
-    private Long authenticatedUserId(Jwt jwt) {
-    if (jwt == null) {
-        throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Authentication required"
-        );
-    }
+    private UUID authenticatedUserId(Jwt jwt) {
 
-    try {
-        return Long.valueOf(jwt.getSubject());
-    } catch (NumberFormatException | NullPointerException ex) {
-        throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Invalid user identity"
-        );
+        if (jwt == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Authentication required"
+            );
+        }
+
+        try {
+            return UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid user identity"
+            );
+        }
     }
-}
 }

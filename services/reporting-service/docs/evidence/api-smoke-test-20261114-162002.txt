@@ -1,0 +1,117 @@
+Reporting Service API smoke test  gateway=http://localhost:18080  run=1794651602  tenant=53602  event=17946516021  2026-11-14T10:20:02Z
+
+== Health
+PASS  health endpoint -> 200 {"status":"UP","groups":["liveness","readiness"]}
+
+== 401 invalid JWT
+PASS  no token                                                 GET /api/reports/overview -> 401
+PASS  garbage token                                            GET /api/reports/overview -> 401
+PASS  tampered signature                                       GET /api/reports/overview -> 401
+PASS  expired token                                            GET /api/reports/overview -> 401
+PASS  wrong issuer                                             GET /api/reports/overview -> 401
+PASS  wrong audience                                           GET /api/reports/overview -> 401
+PASS  non-numeric subject                                      GET /api/reports/overview -> 401
+
+== Feed the read model (REST ingest by a service account)
+PASS  event created                                            PUT /api/reports/ingest/events/17946516021 -> 201
+PASS  identical repeat                                         PUT /api/reports/ingest/events/17946516021 -> 200
+PASS  outcome UNCHANGED                                        contains "outcome":"UNCHANGED"
+PASS  other tenant's event                                     PUT /api/reports/ingest/events/17946516022 -> 201
+PASS  order 1 awaiting verification                            PUT /api/reports/ingest/orders/179465160201 -> 201
+PASS  order 1 confirmed (newer)                                PUT /api/reports/ingest/orders/179465160201 -> 200
+PASS  outcome UPDATED                                          contains "outcome":"UPDATED"
+PASS  order 2 confirmed                                        PUT /api/reports/ingest/orders/179465160202 -> 201
+PASS  order 3 awaiting payment                                 PUT /api/reports/ingest/orders/179465160203 -> 201
+PASS  order 4 failed                                           PUT /api/reports/ingest/orders/179465160204 -> 201
+PASS  prize tier                                               PUT /api/reports/ingest/prizes/17946516027 -> 201
+PASS  payout pending                                           PUT /api/reports/ingest/payouts/17946516029 -> 201
+
+== 409 duplicate / conflicting updates
+PASS  older order version                                      PUT /api/reports/ingest/orders/179465160201 -> 409
+PASS  same version, other content                              PUT /api/reports/ingest/events/17946516021 -> 409
+PASS  order moved to another buyer                             PUT /api/reports/ingest/orders/179465160201 -> 409
+PASS  event moved to another tenant                            PUT /api/reports/ingest/events/17946516021 -> 409
+
+== 422 invalid cross-service references
+PASS  order for unknown event                                  PUT /api/reports/ingest/orders/179465160209 -> 422
+PASS  order tenant != event tenant                             PUT /api/reports/ingest/orders/179465160209 -> 422
+PASS  payout for unknown prize                                 PUT /api/reports/ingest/payouts/17946516030 -> 422
+
+== RabbitMQ feed (yongdrel.reporting.feed via management API)
+PASS  payout PAID published and routed                         contains "routed":true
+PASS  payout report shows it paid                              contains "paidCount":1
+
+== Sales, ticket, prize and payout summaries (organizer, own tenant)
+PASS  event summary                                            GET /api/reports/events/17946516021/summary -> 200
+PASS  revenue 150.00 (3 tickets)                               contains "revenue":150.00
+PASS  tickets sold 3                                           contains "sold":3
+PASS  1 reserved (pending)                                     contains "reserved":1
+PASS  available 96                                             contains "available":96
+PASS  net after prizes 90.00                                   contains "netAfterPrizes":90.00
+PASS  sales report                                             GET /api/reports/sales?eventId=17946516021 -> 200
+PASS  2 confirmed, 1 pending, 1 failed                         contains "confirmedOrders":2
+PASS  conversion 66.67%                                        contains "conversionRatePercent":66.67
+PASS  sales with period                                        GET /api/reports/sales?eventId=17946516021&from=2026-11-02T00:00:00Z&to=2026-11-03T00:00:00Z -> 200
+PASS  daily breakdown                                          contains "date":"2026-11-02"
+PASS  ticket report                                            GET /api/reports/tickets?eventId=17946516021 -> 200
+PASS  prize report                                             GET /api/reports/prizes?eventId=17946516021 -> 200
+PASS  prize tier listed                                        contains "Gold coin"
+PASS  payout report                                            GET /api/reports/payouts?eventId=17946516021 -> 200
+PASS  tenant overview                                          GET /api/reports/overview -> 200
+PASS  overview scoped to tenant                                contains "tenantId":53602
+PASS  events list                                              GET /api/reports/events?status=OPEN -> 200
+PASS  only own event listed                                    contains "totalElements":1
+PASS  admin views tenant                                       GET /api/reports/overview?tenantId=53602 -> 200
+PASS  student's own purchases                                  GET /api/reports/me/purchases -> 200
+PASS  student sees 2 tickets                                   contains "confirmedTickets":2
+
+== Tenant isolation
+PASS  other organizer overview                                 GET /api/reports/overview -> 200
+PASS  other tenant sees no revenue                             contains "revenue":0.00
+PASS  other organizer, foreign event                           GET /api/reports/events/17946516021/summary -> 404
+PASS  other organizer, sales of it                             GET /api/reports/sales?eventId=17946516021 -> 404
+PASS  other organizer asks tenant T                            GET /api/reports/overview?tenantId=53602 -> 403
+
+== Saved reports (CRUD, 409, ownership)
+PASS  create saved report                                      POST /api/reports/saved -> 201
+PASS  duplicate name (any case)                                POST /api/reports/saved -> 409
+PASS  list                                                     GET /api/reports/saved -> 200
+PASS  colleague can read                                       GET /api/reports/saved/1 -> 200
+PASS  colleague cannot edit                                    PUT /api/reports/saved/1 -> 403
+PASS  owner updates                                            PUT /api/reports/saved/1 -> 200
+PASS  run it                                                   GET /api/reports/saved/1/run -> 200
+PASS  runs the ticket report                                   contains "sold":3
+PASS  other tenant cannot see it                               GET /api/reports/saved/1 -> 404
+PASS  saved report on foreign event                            POST /api/reports/saved -> 404
+PASS  owner deletes                                            DELETE /api/reports/saved/1 -> 204
+PASS  deleted is gone                                          GET /api/reports/saved/1 -> 404
+
+== 400 bad input
+PASS  ingest validation errors                                 PUT /api/reports/ingest/events/17946516021 -> 400
+PASS  fieldErrors returned                                     contains "fieldErrors"
+PASS  confirmed order w/o confirmedAt                          PUT /api/reports/ingest/orders/179465160208 -> 400
+PASS  body id != path id                                       PUT /api/reports/ingest/events/17946516021 -> 400
+PASS  unknown enum                                             PUT /api/reports/ingest/events/17946516021 -> 400
+PASS  malformed JSON                                           PUT /api/reports/ingest/events/17946516021 -> 400
+PASS  reversed period                                          GET /api/reports/sales?from=2026-12-01T00:00:00Z&to=2026-11-01T00:00:00Z -> 400
+PASS  period over 366 days                                     GET /api/reports/sales?from=2025-01-01T00:00:00Z&to=2026-11-01T00:00:00Z -> 400
+PASS  bad date                                                 GET /api/reports/sales?from=yesterday -> 400
+PASS  page size 500                                            GET /api/reports/events?size=500 -> 400
+PASS  non-numeric event id                                     GET /api/reports/events/abc/summary -> 400
+PASS  EVENT_SUMMARY without event                              POST /api/reports/saved -> 400
+
+== 403 unauthorized
+PASS  organizer cannot ingest                                  PUT /api/reports/ingest/events/17946516021 -> 403
+PASS  student cannot ingest                                    PUT /api/reports/ingest/events/17946516021 -> 403
+PASS  student cannot read reports                              GET /api/reports/overview -> 403
+PASS  service cannot read reports                              GET /api/reports/overview -> 403
+PASS  organizer without tenantId                               GET /api/reports/overview -> 403
+PASS  admin has no saved reports                               GET /api/reports/saved -> 403
+PASS  organizer has no purchases                               GET /api/reports/me/purchases -> 403
+
+== 404 absent record
+PASS  unknown event summary                                    GET /api/reports/events/999999999999/summary -> 404
+PASS  unknown event in sales                                   GET /api/reports/sales?eventId=999999999999 -> 404
+PASS  unknown saved report                                     GET /api/reports/saved/999999999 -> 404
+
+RESULT: 90 passed, 0 failed   (evidence: docs/evidence/api-smoke-test-20261114-162002.txt)

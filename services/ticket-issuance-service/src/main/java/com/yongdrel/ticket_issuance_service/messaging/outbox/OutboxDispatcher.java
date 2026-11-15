@@ -23,16 +23,20 @@ public class OutboxDispatcher {
     private final OutboxEventRepository repository;
     private final RabbitTemplate rabbitTemplate;
     private final boolean enabled;
+    private final String ticketExchange;
 
     public OutboxDispatcher(
             OutboxEventRepository repository,
             RabbitTemplate rabbitTemplate,
             @Value("${app.outbox.dispatcher.enabled:false}")
-            boolean enabled) {
+            boolean enabled,
+            @Value("${app.messaging.ticket-exchange:yongdrel.ticket.exchange}")
+            String ticketExchange) {
 
         this.repository = repository;
         this.rabbitTemplate = rabbitTemplate;
         this.enabled = enabled;
+        this.ticketExchange = ticketExchange;
     }
 
     @Scheduled(fixedDelay = 5000)
@@ -80,9 +84,9 @@ public class OutboxDispatcher {
                         properties
                 );
 
-                // Publish to RabbitMQ
+                // Publish to the configured RabbitMQ exchange
                 rabbitTemplate.send(
-                        RabbitMQConfig.TICKET_EXCHANGE,
+                        ticketExchange,
                         RabbitMQConfig.TICKET_ISSUED_ROUTING_KEY,
                         message,
                         correlation
