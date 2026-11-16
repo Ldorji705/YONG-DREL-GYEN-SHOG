@@ -68,4 +68,16 @@ public class InternalEventController {
                 event.endDate
         );
     }
+
+    @GetMapping("/{id}/ownership")
+    public boolean ownership(@PathVariable UUID id,@RequestParam UUID organizerId,@RequestParam UUID tenantId,@RequestHeader(value="X-Internal-API-Key",required=false)String key){authorize(key);return service.ownsTenant(id,tenantId)&&service.findById(id).createdBy.equals(organizerId.toString());}
+    @GetMapping("/{id}/capacity")
+    public Capacity capacity(@PathVariable UUID id,@RequestHeader(value="X-Internal-API-Key",required=false)String key){authorize(key);EventEntity e=service.capacity(id);return new Capacity(e.id,e.tenantId,e.maxTickets,e.reservedTickets);}
+    @PostMapping("/{id}/close")
+    public void close(@PathVariable UUID id,@RequestHeader(value="X-Internal-API-Key",required=false)String key){authorize(key);service.close(id);}
+    @GetMapping("/closing")
+    public java.util.List<Closing> closing(@RequestParam java.time.Instant before,@RequestParam(defaultValue="100")int limit,@RequestHeader(value="X-Internal-API-Key",required=false)String key){authorize(key);if(limit<1||limit>100)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid limit");    return service.closing(java.time.LocalDateTime.ofInstant(before,java.time.ZoneOffset.UTC)).stream().limit(limit).map(e->new Closing(e.id,e.tenantId,e.endDate.toInstant(java.time.ZoneOffset.UTC))).toList();}
+    public record Capacity(UUID eventId,UUID tenantId,int capacity,int reserved){}
+    public record Closing(UUID id,UUID tenantId,java.time.Instant expiresAt){}
+    private void authorize(String providedKey){byte[] actual=providedKey==null?new byte[0]:providedKey.getBytes(StandardCharsets.UTF_8);if(!MessageDigest.isEqual(expectedKey,actual))throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid internal API key");}
 }

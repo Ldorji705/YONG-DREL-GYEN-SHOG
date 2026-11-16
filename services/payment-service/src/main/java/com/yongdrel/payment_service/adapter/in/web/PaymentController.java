@@ -88,7 +88,11 @@ public class PaymentController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         UUID organizerId = authenticatedOrganizerId(jwt);
-        return verificationService.approve(paymentId, organizerId);
+        return verificationService.approve(
+                paymentId,
+                organizerId,
+                authenticatedTenantId(jwt)
+        );
     }
 
     @PostMapping("/{paymentId}/reject")
@@ -101,6 +105,7 @@ public class PaymentController {
         return verificationService.reject(
                 paymentId,
                 organizerId,
+                authenticatedTenantId(jwt),
                 request.reason()
         );
     }
@@ -136,5 +141,16 @@ public class PaymentController {
             }
 
             return userId;
+    }
+
+    private UUID authenticatedTenantId(Jwt jwt) {
+        try {
+            return UUID.fromString(jwt.getClaimAsString("tenant_id"));
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Tenant identity required"
+            );
+        }
     }
 }

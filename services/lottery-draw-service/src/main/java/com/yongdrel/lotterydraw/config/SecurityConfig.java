@@ -45,6 +45,11 @@ public class SecurityConfig {
 
                 .requestMatchers(
                     org.springframework.http.HttpMethod.GET,
+                    "/api/draws/*/verification-evidence"
+                ).permitAll()
+
+                .requestMatchers(
+                    org.springframework.http.HttpMethod.GET,
                     "/api/draws/**"
                 ).hasAnyRole("ADMIN", "ORGANIZER")
 

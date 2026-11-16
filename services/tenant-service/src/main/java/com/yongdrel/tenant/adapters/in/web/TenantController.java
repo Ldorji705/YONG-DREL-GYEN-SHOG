@@ -85,7 +85,10 @@ public class TenantController {
         Tenant tenant = tenantService.updateTenant(
                 tenantId,
                 request.name(),
-                ownerUserId
+                ownerUserId,
+                request.paymentDestinationName(),
+                request.paymentAccountReference(),
+                request.paymentInstructions()
         );
 
         return ResponseEntity.ok(TenantResponse.from(tenant));

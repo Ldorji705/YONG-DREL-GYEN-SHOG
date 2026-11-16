@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/draws")
@@ -46,6 +47,10 @@ public class DrawController {
             int winnerCount,
             List<WinnerResponse> winners
     ) {}
+    public record VerificationEvidence(
+            UUID drawId, UUID eventId, String seedCommitment, String revealedSeed,
+            String randomnessEvidence, String ticketSnapshotHash, List<String> ticketIds,
+            String algorithmVersion, List<String> winnerIds) {}
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -68,6 +73,25 @@ public class DrawController {
             @PathVariable UUID drawId) {
 
         return toResponse(service.getDraw(drawId));
+    }
+
+    @GetMapping("/{drawId}/verification-evidence")
+    public VerificationEvidence verificationEvidence(@PathVariable UUID drawId) {
+        DrawEntity draw = service.getDraw(drawId);
+        if (draw.getSeedCommitment() == null || draw.getRevealedSeed() == null
+                || draw.getTicketSnapshotHash() == null || draw.getTicketSnapshot() == null
+                || draw.getAlgorithmVersion() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Historical draw has insufficient verification evidence");
+        }
+        return new VerificationEvidence(
+                draw.getId(), draw.getEventId(), draw.getSeedCommitment(),
+                draw.getRevealedSeed(), "SHA-256(seed || counter[8-byte big-endian])",
+                draw.getTicketSnapshotHash(),
+                List.of(draw.getTicketSnapshot().split("\\n")),
+                draw.getAlgorithmVersion(),
+                draw.getWinners().stream().map(w -> w.getTicketId().toString()).toList());
     }
 
     private DrawResponse toResponse(DrawEntity draw) {

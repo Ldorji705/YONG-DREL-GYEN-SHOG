@@ -10,5 +10,11 @@ public record TrustedOrder(
         Integer quantity,
         BigDecimal amount,
         String currency,
-        String status
-) {}
+        String status,
+        UUID tenantId
+) {
+    public TrustedOrder(UUID orderId, UUID lotteryEventId, UUID userId,
+            Integer quantity, BigDecimal amount, String currency, String status) {
+        this(orderId, lotteryEventId, userId, quantity, amount, currency, status, null);
+    }
+}

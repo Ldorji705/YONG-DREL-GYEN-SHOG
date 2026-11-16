@@ -1,0 +1,1 @@
+ALTER TABLE ticket_reservations ADD COLUMN amount DECIMAL(15,2) NULL, ADD COLUMN currency VARCHAR(3) NULL;

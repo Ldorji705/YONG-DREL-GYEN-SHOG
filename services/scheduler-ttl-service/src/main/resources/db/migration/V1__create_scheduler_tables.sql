@@ -1,0 +1,2 @@
+CREATE TABLE scheduler_lease(name VARCHAR(100) NOT NULL PRIMARY KEY,until_at TIMESTAMP(6) NOT NULL);
+CREATE TABLE scheduler_job_executions(id BINARY(16) NOT NULL PRIMARY KEY,job_name VARCHAR(100) NOT NULL,started_at TIMESTAMP(6) NOT NULL,finished_at TIMESTAMP(6),outcome VARCHAR(20) NOT NULL,error VARCHAR(1000));

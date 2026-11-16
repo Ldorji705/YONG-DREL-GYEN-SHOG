@@ -44,7 +44,7 @@ public class TicketIssuedNotificationListener {
 
         notificationService.processNotification(
                 event.userId(),
-                NotificationTemplate.TICKET_PURCHASED,
+                NotificationTemplate.TICKET_CONFIRMATION,
                 event.eventId(),
                 NotificationChannel.EMAIL,
                 variables

@@ -1,0 +1,9 @@
+package com.yongdrel.payment_proof_service.application.service;
+import com.yongdrel.payment_proof_service.adapter.out.persistence.*; import com.yongdrel.payment_proof_service.application.port.OrderOwnershipPort; import com.yongdrel.payment_proof_service.storage.PrivateProofStorage; import org.junit.jupiter.api.*; import org.junit.jupiter.api.io.TempDir; import org.mockito.*; import org.springframework.mock.web.MockMultipartFile; import org.springframework.web.server.ResponseStatusException; import java.nio.file.Path; import java.util.*; import static org.junit.jupiter.api.Assertions.*; import static org.mockito.Mockito.*;
+class PaymentProofServiceTest{
+ @Mock PaymentProofRepository proofs; @Mock OrderOwnershipPort orders; @TempDir Path temp; PaymentProofService service; UUID order=UUID.randomUUID(),user=UUID.randomUUID(),tenant=UUID.randomUUID();
+ @BeforeEach void setUp(){MockitoAnnotations.openMocks(this);service=new PaymentProofService(proofs,orders,new PrivateProofStorage(temp.toString()),1024);}
+ @Test void rejectsInvalidSignature(){var f=new MockMultipartFile("file","x.png","image/png","not-png".getBytes());assertThrows(ResponseStatusException.class,()->service.submit(order,user,tenant,"k",f));}
+ @Test void rejectsWhenOrderTrustUnavailable(){var f=new MockMultipartFile("file","x.png","image/png",new byte[]{(byte)0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a});when(orders.owns(order,user,tenant)).thenReturn(false);assertThrows(ResponseStatusException.class,()->service.submit(order,user,tenant,"k",f));}
+ @Test void returnsExistingIdempotentSubmission(){PaymentProofEntity p=new PaymentProofEntity(order,user,tenant,"k","x.png","x.png","image/png","hash");when(proofs.findByTenantIdAndUserIdAndIdempotencyKey(tenant,user,"k")).thenReturn(Optional.of(p));var f=new MockMultipartFile("file","x.png","image/png",new byte[]{1});assertSame(p,service.submit(order,user,tenant,"k",f));verifyNoInteractions(orders);}
+}

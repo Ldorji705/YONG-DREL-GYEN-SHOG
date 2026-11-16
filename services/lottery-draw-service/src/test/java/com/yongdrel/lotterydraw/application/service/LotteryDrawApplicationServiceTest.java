@@ -63,7 +63,7 @@ class LotteryDrawApplicationServiceTest {
         assertEquals(2, result.getWinners().size());
 
         verify(eventPort).verifyEligibleForDraw(eventId, "123", "test-access-token");
-        verify(repository).saveAndFlush(any(DrawEntity.class));
+        verify(repository, times(2)).saveAndFlush(any(DrawEntity.class));
     }
 
     @Test

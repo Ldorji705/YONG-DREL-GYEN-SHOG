@@ -2,10 +2,13 @@ package com.yongdrel.notification.domain.model;
 
 public enum NotificationTemplate {
 
-    TICKET_PURCHASED,
-
-    DRAW_COMPLETED,
-
-    WINNER_ANNOUNCED
+    REGISTRATION_WELCOME,
+    PAYMENT_PROOF_RECEIVED,
+    PAYMENT_APPROVED,
+    PAYMENT_REJECTED,
+    TICKET_CONFIRMATION,
+    LOTTERY_DRAW_ANNOUNCEMENT,
+    WINNER_NOTIFICATION,
+    ORDER_EXPIRATION
 
 }

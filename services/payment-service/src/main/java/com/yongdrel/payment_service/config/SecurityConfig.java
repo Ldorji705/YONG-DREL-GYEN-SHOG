@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/payments/order/*"
                         ).authenticated()
 
+                        .requestMatchers("/internal/payments/**").permitAll()
                         .anyRequest().denyAll()
                 )
                 .oauth2ResourceServer(oauth2 ->

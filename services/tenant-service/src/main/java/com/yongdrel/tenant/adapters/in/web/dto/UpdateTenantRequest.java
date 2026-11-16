@@ -7,7 +7,10 @@ public record UpdateTenantRequest(
 
         @NotBlank(message = "Tenant name is required")
         @Size(max = 150, message = "Tenant name cannot exceed 150 characters")
-        String name
+        String name,
+        String paymentDestinationName,
+        String paymentAccountReference,
+        String paymentInstructions
 
 ) {
 }

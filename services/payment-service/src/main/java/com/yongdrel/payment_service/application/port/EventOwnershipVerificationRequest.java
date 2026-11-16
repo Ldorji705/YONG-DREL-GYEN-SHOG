@@ -4,5 +4,10 @@ import java.util.UUID;
 
 public record EventOwnershipVerificationRequest(
         UUID eventId,
-        UUID organizerId
-) {}
+        UUID organizerId,
+        UUID tenantId
+) {
+    public EventOwnershipVerificationRequest(UUID eventId, UUID organizerId) {
+        this(eventId, organizerId, null);
+    }
+}

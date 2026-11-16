@@ -28,7 +28,7 @@ public class EventController {
     public EventEntity create(
         @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody EventRequest request) {
-        return service.create(request, jwt.getSubject());
+        return service.create(request, jwt.getSubject(), UUID.fromString(jwt.getClaimAsString("tenant_id")));
     }
 
     @GetMapping

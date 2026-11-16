@@ -90,7 +90,8 @@ public class PaymentApplicationService {
             );
         }
 
-        if (!"PENDING_PAYMENT".equals(order.status())) {
+        if (!"PENDING_PAYMENT".equals(order.status())
+                && !"AWAITING_PAYMENT".equals(order.status())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Order is not awaiting payment"
@@ -112,7 +113,7 @@ public class PaymentApplicationService {
         PaymentEntity payment = new PaymentEntity(
                 order.orderId(),
                 order.lotteryEventId(),
-                order.userId(),
+                order.userId(), order.tenantId(),
                 order.quantity(),
                 order.amount(),
                 order.currency()

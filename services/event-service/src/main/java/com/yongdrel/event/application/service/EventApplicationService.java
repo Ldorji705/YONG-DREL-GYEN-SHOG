@@ -3,6 +3,7 @@ package com.yongdrel.event.application.service;
 
 import com.yongdrel.event.adapter.in.web.dto.EventRequest;
 import com.yongdrel.event.adapter.out.persistence.*;
+import com.yongdrel.event.domain.model.EventStatus;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,14 +24,47 @@ public class EventApplicationService {
 
     @Transactional
     public EventEntity create(EventRequest request, String userId) {
+        return create(request, userId, null);
+    }
+
+    @Transactional
+    public EventEntity create(EventRequest request, String userId, UUID tenantId) {
         validateDates(request);
         validateCapacity(request);
 
         EventEntity event = new EventEntity();
         event.createdBy = userId;
+        event.tenantId = tenantId;
         apply(event, request);
 
         return repository.save(event);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean ownsTenant(UUID id, UUID tenantId) {
+        EventEntity event = findById(id);
+        return tenantId != null && tenantId.equals(event.tenantId);
+    }
+
+    @Transactional(readOnly = true)
+    public EventEntity capacity(UUID id) {
+        return findById(id);
+    }
+    @Transactional(readOnly = true)
+    public List<EventEntity> closing(java.time.LocalDateTime before) {
+        return repository.findTop100ByStatusInAndEndDateBeforeOrderByEndDateAsc(
+                List.of(EventStatus.ACTIVE, EventStatus.SCHEDULED), before);
+    }
+
+    @Transactional
+    public void close(UUID id) {
+        EventEntity event = repository.findByIdForUpdate(id).orElseThrow();
+        if (event.endDate.isAfter(java.time.LocalDateTime.now(java.time.Clock.systemUTC()))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Event is not closed");
+        }
+        if (event.status == EventStatus.ACTIVE || event.status == EventStatus.SCHEDULED) {
+            event.status = EventStatus.COMPLETED;
+        }
     }
 
     public List<EventEntity> findAll() {

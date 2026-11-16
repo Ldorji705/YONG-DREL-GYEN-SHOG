@@ -29,6 +29,12 @@ public class Tenant {
 
     @Column(name = "status", nullable = false)
     private String status;
+    @Column(name = "payment_destination_name")
+    private String paymentDestinationName;
+    @Column(name = "payment_account_reference")
+    private String paymentAccountReference;
+    @Column(name = "payment_instructions", length = 1000)
+    private String paymentInstructions;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -102,4 +108,10 @@ public class Tenant {
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+    public String getPaymentDestinationName() { return paymentDestinationName; }
+    public void setPaymentDestinationName(String value) { paymentDestinationName = value; }
+    public String getPaymentAccountReference() { return paymentAccountReference; }
+    public void setPaymentAccountReference(String value) { paymentAccountReference = value; }
+    public String getPaymentInstructions() { return paymentInstructions; }
+    public void setPaymentInstructions(String value) { paymentInstructions = value; }
 }

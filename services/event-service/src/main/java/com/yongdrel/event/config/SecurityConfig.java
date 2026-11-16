@@ -27,8 +27,9 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(
                     org.springframework.http.HttpMethod.GET,
-                    "/internal/events/*"
+                    "/internal/events/**"
                 ).permitAll()
+                .requestMatchers("/internal/events/**").permitAll()
                 .requestMatchers("/api/events/**").authenticated()
                 .anyRequest().denyAll()
             )

@@ -10,6 +10,6 @@ public interface NotificationDeliveryPort {
     void deliver(
             UUID recipientId,
             NotificationChannel channel,
-            String message
+            com.yongdrel.notification.application.template.RenderedEmail message
     );
 }

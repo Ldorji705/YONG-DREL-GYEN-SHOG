@@ -1,0 +1,2 @@
+CREATE TABLE verification_batches(id BINARY(16) NOT NULL PRIMARY KEY,tenant_id BINARY(16) NOT NULL,organizer_id BINARY(16) NOT NULL,idempotency_key VARCHAR(128) NOT NULL,submitted_at TIMESTAMP(6) NOT NULL,CONSTRAINT uk_batch_key UNIQUE(tenant_id,idempotency_key));
+CREATE TABLE verification_items(id BINARY(16) NOT NULL PRIMARY KEY,batch_id BINARY(16) NOT NULL,reference VARCHAR(128) NOT NULL,result VARCHAR(32) NOT NULL,payment_id BINARY(16),processed_at TIMESTAMP(6) NOT NULL,CONSTRAINT uk_batch_reference UNIQUE(batch_id,reference));

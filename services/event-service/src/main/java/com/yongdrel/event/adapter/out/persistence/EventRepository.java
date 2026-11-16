@@ -11,6 +11,10 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
+import java.util.List;
+import java.time.LocalDateTime;
+import com.yongdrel.event.domain.model.EventStatus;
 
 public interface EventRepository
         extends JpaRepository<EventEntity, UUID> {
@@ -43,4 +47,5 @@ public interface EventRepository
     Optional<EventEntity> findByIdForUpdate(
             @Param("id") UUID id
     );
+    List<EventEntity> findTop100ByStatusInAndEndDateBeforeOrderByEndDateAsc(Collection<EventStatus> statuses, LocalDateTime before);
 }

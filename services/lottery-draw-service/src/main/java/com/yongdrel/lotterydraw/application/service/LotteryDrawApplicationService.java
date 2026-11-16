@@ -13,6 +13,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
+import java.security.SecureRandom;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
 
@@ -75,28 +81,39 @@ public class LotteryDrawApplicationService {
         );
 
         // Must come from a trusted, finalized ticket source.
-        List<UUID> eligibleTickets =
-                eligibleTicketPort.getEligibleTicketIds(eventId);
-
-        List<UUID> selectedWinners =
-                winnerSelectionService.selectWinners(
-                        eligibleTickets,
-                        winnerCount
-                );
+        List<UUID> eligibleTickets = eligibleTicketPort.getEligibleTicketIds(eventId)
+                .stream().sorted().toList();
+        if (eligibleTickets.isEmpty()) {
+            throw new IllegalArgumentException("No eligible tickets are available");
+        }
+        if (winnerCount > eligibleTickets.size()) {
+            throw new IllegalArgumentException("Winner count exceeds eligible ticket count");
+        }
+        String snapshot = eligibleTickets.stream().map(UUID::toString)
+                .collect(Collectors.joining("\n"));
+        String snapshotHash = sha256(snapshot);
+        byte[] seedBytes = new byte[32];
+        new SecureRandom().nextBytes(seedBytes);
+        String seed = HexFormat.of().formatHex(seedBytes);
+        String commitment = sha256(seed);
 
         DrawEntity draw = new DrawEntity(
                 eventId,
                 authenticatedUserId,
                 eligibleTickets.size(),
-                winnerCount
+                winnerCount,
+                commitment,
+                null,
+                snapshotHash,
+                snapshot,
+                WinnerSelectionService.ALGORITHM_VERSION
         );
 
-        for (int i = 0; i < selectedWinners.size(); i++) {
-            draw.addWinner(selectedWinners.get(i), i + 1);
-        }
-
         try {
-            // Flush now to detect database constraint violations.
+            drawRepository.saveAndFlush(draw);
+            List<UUID> selectedWinners = winnerSelectionService.selectWinners(
+                    eligibleTickets, winnerCount, seed);
+            draw.complete(seed, selectedWinners);
             return drawRepository.saveAndFlush(draw);
 
         } catch (DataIntegrityViolationException exception) {
@@ -115,5 +132,14 @@ public class LotteryDrawApplicationService {
                         org.springframework.http.HttpStatus.NOT_FOUND,
                         "Draw not found"
                 ));
+    }
+
+    private static String sha256(String value) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 }

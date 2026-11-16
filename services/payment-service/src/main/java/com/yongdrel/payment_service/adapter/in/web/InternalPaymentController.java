@@ -1,0 +1,8 @@
+package com.yongdrel.payment_service.adapter.in.web;
+import com.yongdrel.payment_service.adapter.out.persistence.PaymentEntity;import com.yongdrel.payment_service.adapter.out.persistence.PaymentRepository;import org.springframework.beans.factory.annotation.Value;import org.springframework.http.*;import org.springframework.web.bind.annotation.*;import java.nio.charset.StandardCharsets;import java.security.MessageDigest;import java.util.UUID;
+@RestController @RequestMapping("/internal/payments") public class InternalPaymentController{
+ private final PaymentRepository repo;private final byte[] key;public InternalPaymentController(PaymentRepository r,@Value("${app.internal.payment-proof-api-key}")String k){if(k==null||k.isBlank())throw new IllegalStateException("Payment internal key required");repo=r;key=k.getBytes(StandardCharsets.UTF_8);}
+ @GetMapping("/by-bank-reference/{reference}") public Match lookup(@PathVariable String reference,@RequestParam UUID tenantId,@RequestHeader(value="X-Internal-API-Key",required=false)String provided){auth(provided);PaymentEntity p=repo.findByProviderReference(reference).orElse(null);if(p==null||!tenantId.equals(p.getTenantId()))return null;return new Match(p.getId(),p.getOrderId(),p.getTenantId(),p.getStatus().name().equals("PENDING_VERIFICATION"),true);}
+ private void auth(String p){if(p==null||!MessageDigest.isEqual(key,p.getBytes(StandardCharsets.UTF_8)))throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid internal credentials");}
+ public record Match(UUID paymentId,UUID orderId,UUID tenantId,boolean eligibleForReview,boolean sourceAvailable){}
+}

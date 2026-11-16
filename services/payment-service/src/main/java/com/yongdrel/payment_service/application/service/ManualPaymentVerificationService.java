@@ -30,6 +30,7 @@ public class ManualPaymentVerificationService {
     private final PaymentProofValidationPort proofValidationPort;
     private final EventOwnershipVerificationPort ownershipPort;
     private final BankTransactionVerificationPort bankVerificationPort;
+    private final OrderPaymentStatePort orderStatePort;
     private final ObjectMapper objectMapper;
 
     public ManualPaymentVerificationService(
@@ -40,18 +41,41 @@ public class ManualPaymentVerificationService {
             BankTransactionVerificationPort bankVerificationPort,
             ObjectMapper objectMapper
     ) {
+        this(paymentRepository, outboxRepository, proofValidationPort,
+                ownershipPort, bankVerificationPort, objectMapper, null);
+    }
+
+    public ManualPaymentVerificationService(
+            PaymentRepository paymentRepository,
+            PaymentOutboxRepository outboxRepository,
+            PaymentProofValidationPort proofValidationPort,
+            EventOwnershipVerificationPort ownershipPort,
+            BankTransactionVerificationPort bankVerificationPort,
+            ObjectMapper objectMapper,
+            OrderPaymentStatePort orderStatePort
+    ) {
         this.paymentRepository = paymentRepository;
         this.outboxRepository = outboxRepository;
         this.proofValidationPort = proofValidationPort;
         this.ownershipPort = ownershipPort;
         this.bankVerificationPort = bankVerificationPort;
         this.objectMapper = objectMapper;
+        this.orderStatePort = orderStatePort;
     }
 
     @Transactional
     public PaymentResponse approve(UUID paymentId, UUID organizerId) {
+        return approve(paymentId, organizerId, null);
+    }
+
+    @Transactional
+    public PaymentResponse approve(
+            UUID paymentId,
+            UUID organizerId,
+            UUID tenantId
+    ) {
         PaymentEntity payment = lockedPayment(paymentId);
-        authorizeOwnership(payment, organizerId);
+        authorizeOwnership(payment, organizerId, tenantId);
 
         if (payment.getStatus() == PaymentStatus.CONFIRMED) {
             if (organizerId.equals(payment.getVerifiedBy())) {
@@ -74,6 +98,14 @@ public class ManualPaymentVerificationService {
             throw conflict("Bank transaction could not be verified");
         }
 
+        if (orderStatePort != null && paymentTenant(payment) == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Trusted order transition unavailable");
+        }
+        if (orderStatePort != null) {
+            orderStatePort.confirmed(payment.getOrderId(), paymentTenant(payment),
+                    payment.getId());
+        }
         payment.markApproved(organizerId);
         createConfirmationOutbox(payment);
         return PaymentResponse.from(paymentRepository.save(payment));
@@ -85,8 +117,26 @@ public class ManualPaymentVerificationService {
             UUID organizerId,
             String reason
     ) {
+        return reject(paymentId, organizerId, null, reason);
+    }
+
+    @Transactional
+    public PaymentResponse reject(
+            UUID paymentId,
+            UUID organizerId,
+            UUID tenantId,
+            String reason
+    ) {
         PaymentEntity payment = lockedPayment(paymentId);
-        authorizeOwnership(payment, organizerId);
+        authorizeOwnership(payment, organizerId, tenantId);
+
+        if (payment.getStatus() == PaymentStatus.REJECTED
+                && organizerId.equals(payment.getVerifiedBy())
+                && reason != null
+                && reason.trim().equals(payment.getRejectionReason())) {
+            return PaymentResponse.from(payment);
+        }
+
         requirePendingVerification(payment);
 
         if (reason == null || reason.isBlank()) {
@@ -96,8 +146,19 @@ public class ManualPaymentVerificationService {
             );
         }
 
+        if (orderStatePort != null && paymentTenant(payment) == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Trusted order transition unavailable");
+        }
+        if (orderStatePort != null) {
+            orderStatePort.failed(payment.getOrderId(), paymentTenant(payment));
+        }
         payment.markRejected(organizerId, reason.trim());
         return PaymentResponse.from(paymentRepository.save(payment));
+    }
+
+    private UUID paymentTenant(PaymentEntity payment) {
+        return payment.getTenantId();
     }
 
     private PaymentEntity lockedPayment(UUID paymentId) {
@@ -117,13 +178,15 @@ public class ManualPaymentVerificationService {
 
     private void authorizeOwnership(
             PaymentEntity payment,
-            UUID organizerId
+            UUID organizerId,
+            UUID tenantId
     ) {
         if (organizerId == null
                 || !ownershipPort.ownsEvent(
                         new EventOwnershipVerificationRequest(
                                 payment.getLotteryEventId(),
-                                organizerId
+                                organizerId,
+                                tenantId
                         ))) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,

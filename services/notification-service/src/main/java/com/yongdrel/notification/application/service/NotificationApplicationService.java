@@ -82,7 +82,8 @@ public class NotificationApplicationService {
         notificationStore.save(notification);
 
         try {
-            String message = templateRenderer.render(template, variables);
+            var message = templateRenderer.render(
+                    template, variables, notification.getRecipientId());
 
             deliveryPort.deliver(
                     recipientId,

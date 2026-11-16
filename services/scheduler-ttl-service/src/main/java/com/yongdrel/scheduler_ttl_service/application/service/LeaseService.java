@@ -1,0 +1,3 @@
+package com.yongdrel.scheduler_ttl_service.application.service;
+import com.yongdrel.scheduler_ttl_service.adapter.out.persistence.*;import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;import java.time.Instant;
+@Service public class LeaseService{private final LeaseRepository repo;public LeaseService(LeaseRepository r){repo=r;}@Transactional public boolean acquire(String n,long seconds){JobLeaseEntity l=repo.lock(n).orElseGet(()->repo.save(new JobLeaseEntity(n)));Instant now=Instant.now();if(l.getUntilAt().isAfter(now))return false;l.renew(now.plusSeconds(seconds));repo.save(l);return true;}}

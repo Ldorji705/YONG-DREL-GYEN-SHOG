@@ -35,6 +35,10 @@ public class PaymentEntity {
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID userId;
 
+    @Column(name = "tenant_id")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID tenantId;
+
     @Column(nullable = false)
     private Integer quantity;
 
@@ -85,10 +89,18 @@ public class PaymentEntity {
             BigDecimal amount,
             String currency
     ) {
+        this(orderId, lotteryEventId, userId, null, quantity, amount, currency);
+    }
+
+    public PaymentEntity(
+            UUID orderId, UUID lotteryEventId, UUID userId, UUID tenantId,
+            Integer quantity, BigDecimal amount, String currency
+    ) {
         this.id = UUID.randomUUID();
         this.orderId = orderId;
         this.lotteryEventId = lotteryEventId;
         this.userId = userId;
+        this.tenantId = tenantId;
         this.quantity = quantity;
         this.amount = amount;
         this.currency = currency;
@@ -112,6 +124,7 @@ public class PaymentEntity {
     public UUID getUserId() {
         return userId;
     }
+    public UUID getTenantId() { return tenantId; }
 
     public Integer getQuantity() {
         return quantity;

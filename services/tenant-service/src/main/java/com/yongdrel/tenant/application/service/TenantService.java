@@ -75,7 +75,10 @@ public class TenantService {
     public Tenant updateTenant(
             UUID tenantId,
             String name,
-            UUID ownerUserId
+            UUID ownerUserId,
+            String paymentDestinationName,
+            String paymentAccountReference,
+            String paymentInstructions
     ) {
 
         Tenant tenant = getTenant(tenantId, ownerUserId);
@@ -98,8 +101,21 @@ public class TenantService {
         }
 
         tenant.setName(updatedName);
+        tenant.setPaymentDestinationName(paymentDestinationName);
+        tenant.setPaymentAccountReference(paymentAccountReference);
+        tenant.setPaymentInstructions(paymentInstructions);
 
         return tenantRepository.save(tenant);
+    }
+
+    public Tenant updateTenant(UUID tenantId, String name, UUID ownerUserId) {
+        return updateTenant(tenantId, name, ownerUserId, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Tenant getPaymentDetails(UUID tenantId, UUID organizerId) {
+        return tenantRepository.findByTenantIdAndOwnerUserId(tenantId, organizerId)
+                .orElseThrow(() -> new TenantNotFoundException("Tenant payment details not found"));
     }
 
     // Change tenant status.

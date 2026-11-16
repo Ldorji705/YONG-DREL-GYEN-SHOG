@@ -1,0 +1,1 @@
+ALTER TABLE payments ADD COLUMN tenant_id BINARY(16) NULL;

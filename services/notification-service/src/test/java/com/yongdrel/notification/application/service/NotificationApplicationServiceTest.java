@@ -44,7 +44,7 @@ class NotificationApplicationServiceTest {
     private UUID eventId;
 
     private final NotificationTemplate template =
-            NotificationTemplate.TICKET_PURCHASED;
+            NotificationTemplate.TICKET_CONFIRMATION;
 
     private final NotificationChannel channel =
             NotificationChannel.EMAIL;
@@ -104,8 +104,9 @@ class NotificationApplicationServiceTest {
         when(notificationStore.save(any(Notification.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(templateRenderer.render(eq(template), anyMap()))
-                .thenReturn("Your ticket has been issued.");
+        when(templateRenderer.render(eq(template), anyMap(), eq(recipientId)))
+                .thenReturn(new com.yongdrel.notification.application.template.RenderedEmail(
+                        "Ticket confirmation", "<p>Issued</p>", "Issued"));
 
         Notification result = service.processNotification(
                 recipientId,
@@ -121,7 +122,8 @@ class NotificationApplicationServiceTest {
         verify(deliveryPort).deliver(
                 recipientId,
                 channel,
-                "Your ticket has been issued."
+                new com.yongdrel.notification.application.template.RenderedEmail(
+                        "Ticket confirmation", "<p>Issued</p>", "Issued")
         );
     }
 
@@ -134,12 +136,13 @@ class NotificationApplicationServiceTest {
         when(notificationStore.save(any(Notification.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(templateRenderer.render(eq(template), anyMap()))
-                .thenReturn("Your ticket has been issued.");
+        when(templateRenderer.render(eq(template), anyMap(), eq(recipientId)))
+                .thenReturn(new com.yongdrel.notification.application.template.RenderedEmail(
+                        "Ticket confirmation", "<p>Issued</p>", "Issued"));
 
         doThrow(new RuntimeException("Delivery failed"))
                 .when(deliveryPort)
-                .deliver(eq(recipientId), eq(channel), anyString());
+                .deliver(eq(recipientId), eq(channel), any());
 
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
@@ -181,10 +184,10 @@ class NotificationApplicationServiceTest {
         assertEquals(NotificationStatus.SENT, result.getStatus());
 
         verify(deliveryPort, never())
-                .deliver(any(), any(), anyString());
+                .deliver(any(), any(), any());
 
         verify(templateRenderer, never())
-                .render(any(), anyMap());
+                .render(any(), anyMap(), any());
     }
 
     @Test

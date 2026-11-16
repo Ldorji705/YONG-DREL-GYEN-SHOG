@@ -36,6 +36,16 @@ public class DrawEntity {
 
     @Column(nullable = false)
     private String status;
+    @Column(name = "seed_commitment", length = 64)
+    private String seedCommitment;
+    @Column(name = "revealed_seed", length = 64)
+    private String revealedSeed;
+    @Column(name = "ticket_snapshot_hash", length = 64)
+    private String ticketSnapshotHash;
+    @Column(name = "ticket_snapshot", columnDefinition = "TEXT")
+    private String ticketSnapshot;
+    @Column(name = "algorithm_version", length = 64)
+    private String algorithmVersion;
 
     @OneToMany(
         mappedBy = "draw",
@@ -51,7 +61,12 @@ public class DrawEntity {
             UUID eventId,
             String executedBy,
             int eligibleTicketCount,
-            int winnerCount) {
+            int winnerCount,
+            String seedCommitment,
+            String revealedSeed,
+            String ticketSnapshotHash,
+            String ticketSnapshot,
+            String algorithmVersion) {
 
         this.id = UUID.randomUUID();
         this.eventId = eventId;
@@ -59,7 +74,20 @@ public class DrawEntity {
         this.executedAt = Instant.now();
         this.eligibleTicketCount = eligibleTicketCount;
         this.winnerCount = winnerCount;
+        this.status = revealedSeed == null ? "COMMITTED" : "COMPLETED";
+        this.seedCommitment = seedCommitment;
+        this.revealedSeed = revealedSeed;
+        this.ticketSnapshotHash = ticketSnapshotHash;
+        this.ticketSnapshot = ticketSnapshot;
+        this.algorithmVersion = algorithmVersion;
+    }
+
+    public void complete(String revealedSeed, List<UUID> selectedTicketIds) {
+        this.revealedSeed = revealedSeed;
         this.status = "COMPLETED";
+        for (int i = 0; i < selectedTicketIds.size(); i++) {
+            addWinner(selectedTicketIds.get(i), i + 1);
+        }
     }
 
     public void addWinner(UUID ticketId, int selectionOrder) {
@@ -75,6 +103,11 @@ public class DrawEntity {
     public int getEligibleTicketCount() { return eligibleTicketCount; }
     public int getWinnerCount() { return winnerCount; }
     public String getStatus() { return status; }
+    public String getSeedCommitment() { return seedCommitment; }
+    public String getRevealedSeed() { return revealedSeed; }
+    public String getTicketSnapshotHash() { return ticketSnapshotHash; }
+    public String getTicketSnapshot() { return ticketSnapshot; }
+    public String getAlgorithmVersion() { return algorithmVersion; }
     public List<DrawWinnerEntity> getWinners() {
         return List.copyOf(winners);
     }

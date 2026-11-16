@@ -32,6 +32,9 @@ public class EventEntity {
     @Column(nullable = false, updatable = false)
     public String createdBy;
 
+    @Column
+    public UUID tenantId;
+
     @Column(nullable = false, updatable = false)
     public LocalDateTime createdAt;
 
